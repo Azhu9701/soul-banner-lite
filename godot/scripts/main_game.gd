@@ -19,11 +19,13 @@ const BOTTOM_HEIGHT: float = 40.0
 # ── @onready Vars ──
 
 @onready var _ws_manager: Node = $/root/WebSocketManager
+@onready var _production_area: VBoxContainer = $ProductionArea
 
 # ── Private Vars ──
 
 var _game_state: Dictionary = {}
 var _decision_type: String = ""
+var _production_view: ProductionView
 
 # Lazy-init UI nodes (created in _build_ui)
 var _year_label: Label
@@ -55,6 +57,7 @@ func _build_ui() -> void:
 	_build_top_bar()
 	_build_message_log()
 	_build_bottom_bar()
+	_build_production_view()
 	_build_popup()
 
 
@@ -119,6 +122,20 @@ func _build_bottom_bar() -> void:
 	loan_btn.text = "🏦 贷款 20M"
 	loan_btn.pressed.connect(_on_loan_clicked)
 	hb.add_child(loan_btn)
+
+
+func _build_production_view() -> void:
+	# 清空占位节点（场景定义中已有的 ProductionArea VBoxContainer）
+	for child in _production_area.get_children():
+		_production_area.remove_child(child)
+		child.queue_free()
+
+	var prod_view := ProductionView.new()
+	prod_view.name = "ProductionView"
+	prod_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	prod_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_production_area.add_child(prod_view)
+	_production_view = prod_view
 
 
 func _build_popup() -> void:
@@ -223,6 +240,10 @@ func _update_ui() -> void:
 	_quarter_label.text = " 第 %d 季度" % gs.get("game_quarter", 1)
 	_cash_label.text = " 💰 %dM" % gs.get("cash", 0)
 	_phase_label.text = " 阶段 %d" % gs.get("phase", 1)
+
+	# 刷新生产线视窗
+	if _production_view:
+		_production_view.update(gs.get("factories", []))
 
 
 func _show_decision(data: Dictionary) -> void:
