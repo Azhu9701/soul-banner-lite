@@ -1,5 +1,6 @@
 mod auth;
 mod bing;
+mod business_sandbox;
 mod coding_tools;
 mod collector;
 mod error;
@@ -22,7 +23,7 @@ use registry::SoulRegistry;
 
 use crate::collector::SoulCollector;
 use crate::rate_limiter::RateLimiter;
-use crate::state::AppState;
+use crate::state::{AppState, BusinessSandboxState};
 use crate::store::AppStore;
 use crate::web_fetch_tool::WebFetchTool;
 use crate::web_search_tool::WebSearchTool;
@@ -234,6 +235,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         interrogation_gates: Arc::new(dashmap::DashMap::new()),
         preferred_provider: Arc::new(std::sync::RwLock::new(None)),
         api_token: api_token.clone(),
+        business_sandbox: Arc::new(BusinessSandboxState::new()),
     });
 
     let app = build_router(state.clone(), rate_limiter, cors_origins);
@@ -327,6 +329,10 @@ fn build_router(state: Arc<AppState>, rate_limiter: Arc<RateLimiter>, cors_origi
         .route(
             "/ws/souls/auto-create/:task_id",
             axum::routing::get(ws::auto_create_ws_handler),
+        )
+        .route(
+            "/ws/game/:game_id",
+            axum::routing::get(crate::business_sandbox::ws_handler::game_ws_handler),
         )
         .with_state(state);
 
