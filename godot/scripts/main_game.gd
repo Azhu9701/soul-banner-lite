@@ -386,7 +386,14 @@ func _section_head(txt: String) -> Label:
 	return _label(txt, T.h2, T.colors.text_strong)
 
 func _yr(phase: int) -> Array[int]:
-	match phase: 1: return [1,4]; 2: return [5,7]; 3: return [8,11]; _: return [12,12]
+	match phase:
+		1: return [1, 4]
+		2: return [5, 7]
+		3: return [8, 11]
+		_: return [12, 12]
 
 func _sum_loans(loans: Array) -> int:
-	var s := 0; for l in loans: s += l.get("amount", 0); return s
+	var s := 0
+	for l in loans:
+		s += l.get("amount", 0)
+	return s
