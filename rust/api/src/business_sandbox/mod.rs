@@ -1,3 +1,4 @@
+pub mod engine;
 pub mod errors;
 pub mod finance;
 pub mod market;
