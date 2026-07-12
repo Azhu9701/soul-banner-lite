@@ -12,6 +12,7 @@ class_name MainGame
 # ── Preloads ──
 
 const AnnualReportPopupScript := preload("res://scripts/popups/annual_report_popup.gd")
+const OrderMeetingPopupScript := preload("res://scripts/popups/order_meeting_popup.gd")
 
 
 # ── Constants ──
@@ -45,6 +46,7 @@ var _popup_title: Label
 var _popup_input: LineEdit
 var _popup_btn: Button
 var _annual_report_popup: Variant
+var _order_meeting_popup: Variant
 
 
 # ── Virtual Methods ──
@@ -68,6 +70,7 @@ func _build_ui() -> void:
 	_build_inventory_dashboard()
 	_build_popup()
 	_build_annual_report_popup()
+	_build_order_meeting_popup()
 
 
 func _build_top_bar() -> void:
@@ -214,6 +217,18 @@ func _build_annual_report_popup() -> void:
 	_annual_report_popup = popup
 
 
+func _build_order_meeting_popup() -> void:
+	var popup: Variant = OrderMeetingPopupScript.new()
+	popup.name = "OrderMeetingPopup"
+	popup.visible = false
+	popup.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	popup.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var popup_layer: CanvasLayer = $PopupLayer
+	popup_layer.add_child(popup)
+	popup.orders_confirmed.connect(_on_order_meeting_confirmed)
+	_order_meeting_popup = popup
+
+
 # ── Helpers ──
 
 static func _make_spacer() -> Control:
@@ -268,6 +283,15 @@ func _on_message_received(data: Dictionary) -> void:
 			_log("[color=green]📊 收到年度报告 — 第 %d 年[/color]" % report_data.get("year", 0))
 			if _annual_report_popup:
 				_annual_report_popup.show_report(report_data)
+		"order_meeting":
+			var order_data: Dictionary = data.get("data", {})
+			var market_name: String = order_data.get("market_name", "")
+			var orders: Array = order_data.get("orders", [])
+			var year: int = order_data.get("year", 1)
+			var predictions: Array = order_data.get("predictions", [])
+			_log("[color=cyan]📋 收到订货会数据 — %s  第 %d 年 (%d 张订单)[/color]" % [market_name, year, orders.size()])
+			if _order_meeting_popup:
+				_order_meeting_popup.show_orders(market_name, orders, year, predictions)
 
 
 # ── UI Updates ──
@@ -338,6 +362,16 @@ func _on_discount_clicked() -> void:
 	var amount: int = ar[0].get("amount", 0)
 	_log("[color=yellow]💰 贴现 %dM 应收款...[/color]" % amount)
 	_ws_manager.send_action({"action": "discount_receivable", "amount": amount})
+
+
+func _on_order_meeting_confirmed(selected_ids: Array) -> void:
+	if selected_ids.is_empty():
+		return
+	_log("[color=green]📋 提交 %d 张订单[/color]" % selected_ids.size())
+	_ws_manager.send_action({
+		"action": "submit_orders",
+		"order_ids": selected_ids
+	})
 
 
 func _on_loan_clicked() -> void:
