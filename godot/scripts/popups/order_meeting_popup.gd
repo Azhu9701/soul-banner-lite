@@ -13,6 +13,7 @@ extends Panel
 class_name OrderMeetingPopup
 
 const T = preload("res://scripts/theme.gd")
+const AU = preload("res://scripts/animation_utils.gd")
 
 # ── Colors ──
 
@@ -130,6 +131,7 @@ func show_orders(market_name: String, orders: Array, year: int, predictions: Arr
 
 	visible = true
 	_center_dialog()
+	AU.pop_in(_dialog)
 
 
 ## 返回当前选中的订单 ID 数组。
@@ -181,6 +183,7 @@ func _build_ui() -> void:
 	_close_btn.add_theme_stylebox_override("normal", _make_stylebox(COLOR_CLOSE_BG))
 	_close_btn.add_theme_stylebox_override("hover", _make_stylebox(COLOR_CLOSE_HOVER))
 	_close_btn.connect("pressed", _on_close_pressed)
+	_close_btn.pressed.connect(func(): AU.button_press(_close_btn))
 	_dialog.add_child(_close_btn)
 
 	# ── Section: 市场预测 ──
@@ -254,6 +257,7 @@ func _build_ui() -> void:
 	_submit_btn.add_theme_stylebox_override("hover", _make_stylebox(COLOR_BTN_HOVER))
 	_submit_btn.add_theme_stylebox_override("disabled", _make_stylebox(COLOR_BTN_DISABLED))
 	_submit_btn.connect("pressed", _on_submit_pressed)
+	_submit_btn.pressed.connect(func(): AU.button_press(_submit_btn))
 	_dialog.add_child(_submit_btn)
 
 

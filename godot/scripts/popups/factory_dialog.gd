@@ -12,6 +12,7 @@ extends Panel
 class_name FactoryDialog
 
 const T = preload("res://scripts/theme.gd")
+const AU = preload("res://scripts/animation_utils.gd")
 
 # ── Colors ──
 
@@ -114,6 +115,7 @@ func show_dialog(state: Dictionary) -> void:
 	_refresh_discount_info()
 	visible = true
 	_center_dialog()
+	AU.pop_in(_dialog)
 
 
 # ── UI Building ──
@@ -156,6 +158,7 @@ func _build_ui() -> void:
 	_close_btn.add_theme_stylebox_override("normal", _make_stylebox(COLOR_CLOSE_BG))
 	_close_btn.add_theme_stylebox_override("hover", _make_stylebox(COLOR_CLOSE_HOVER))
 	_close_btn.connect("pressed", _on_close_pressed)
+	_close_btn.pressed.connect(func(): AU.button_press(_close_btn))
 	_dialog.add_child(_close_btn)
 
 	y_pos = 48.0
@@ -201,6 +204,7 @@ func _build_ui() -> void:
 		btn.add_theme_stylebox_override("normal", _make_stylebox(COLOR_LINE_BTN))
 		btn.add_theme_stylebox_override("hover", _make_stylebox(COLOR_LINE_BTN_HOVER))
 		btn.connect("pressed", _on_line_type_selected.bind(lt))
+		btn.pressed.connect(func(): AU.button_press(btn))
 		_dialog.add_child(btn)
 		_line_type_btns[lt] = btn
 		line_btn_x += 132.0
@@ -224,6 +228,7 @@ func _build_ui() -> void:
 	confirm_line_btn.add_theme_stylebox_override("normal", _make_stylebox(COLOR_BTN_BG))
 	confirm_line_btn.add_theme_stylebox_override("hover", _make_stylebox(COLOR_BTN_HOVER))
 	confirm_line_btn.connect("pressed", _on_confirm_line_pressed)
+	confirm_line_btn.pressed.connect(func(): AU.button_press(confirm_line_btn))
 	_dialog.add_child(confirm_line_btn)
 	y_pos += 38.0
 
@@ -247,6 +252,7 @@ func _build_ui() -> void:
 		btn.add_theme_stylebox_override("normal", _make_stylebox(COLOR_LOAN_BTN))
 		btn.add_theme_stylebox_override("hover", _make_stylebox(COLOR_LOAN_BTN_HOVER))
 		btn.connect("pressed", _on_loan_type_selected.bind(lt))
+		btn.pressed.connect(func(): AU.button_press(btn))
 		_dialog.add_child(btn)
 		_loan_type_btns[lt] = btn
 		loan_btn_x += 72.0
@@ -295,6 +301,7 @@ func _build_ui() -> void:
 	confirm_loan_btn.add_theme_stylebox_override("normal", _make_stylebox(COLOR_BTN_BG))
 	confirm_loan_btn.add_theme_stylebox_override("hover", _make_stylebox(COLOR_BTN_HOVER))
 	confirm_loan_btn.connect("pressed", _on_confirm_loan_pressed)
+	confirm_loan_btn.pressed.connect(func(): AU.button_press(confirm_loan_btn))
 	_dialog.add_child(confirm_loan_btn)
 	y_pos += 38.0
 
@@ -329,6 +336,7 @@ func _build_ui() -> void:
 	_discount_confirm_btn.add_theme_stylebox_override("normal", _make_stylebox(COLOR_BTN_BG))
 	_discount_confirm_btn.add_theme_stylebox_override("hover", _make_stylebox(COLOR_BTN_HOVER))
 	_discount_confirm_btn.connect("pressed", _on_confirm_discount_pressed)
+	_discount_confirm_btn.pressed.connect(func(): AU.button_press(_discount_confirm_btn))
 	_dialog.add_child(_discount_confirm_btn)
 
 	# Initialize selection states

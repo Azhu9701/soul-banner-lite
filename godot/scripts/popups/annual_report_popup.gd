@@ -10,6 +10,7 @@ extends Panel
 class_name AnnualReportPopup
 
 const T = preload("res://scripts/theme.gd")
+const AU = preload("res://scripts/animation_utils.gd")
 
 # ── Colors ──
 
@@ -154,6 +155,7 @@ func show_report(report: Dictionary) -> void:
 	_populate_tabs()
 	visible = true
 	_center_dialog()
+	AU.pop_in(_dialog)
 
 
 # ── UI Building ──
@@ -197,6 +199,7 @@ func _build_ui() -> void:
 	_close_btn.add_theme_stylebox_override("normal", _make_stylebox(COLOR_CLOSE_BG))
 	_close_btn.add_theme_stylebox_override("hover", _make_stylebox(COLOR_CLOSE_HOVER))
 	_close_btn.connect("pressed", _on_close_pressed)
+	_close_btn.pressed.connect(func(): AU.button_press(_close_btn))
 	_dialog.add_child(_close_btn)
 
 	# ── TabContainer ──
@@ -376,7 +379,7 @@ func _make_data_row(label_text: String, value: Variant, is_total: bool, is_major
 	if is_total:
 		label.add_theme_font_size_override("font_size", FONT_SIZE_TOTAL)
 		label.add_theme_color_override("font_color", COLOR_TOTAL)
-		label.add_theme_font_weight_override("bold", true)
+		label.add_theme_font_size_override("bold", true)
 	else:
 		label.add_theme_font_size_override("font_size", FONT_SIZE_ROW)
 		label.add_theme_color_override("font_color", COLOR_LABEL)
@@ -403,7 +406,7 @@ func _make_data_row(label_text: String, value: Variant, is_total: bool, is_major
 	var num_val: float = float(value) if value != null else 0.0
 	if is_total or is_major:
 		val_label.add_theme_font_size_override("font_size", FONT_SIZE_TOTAL)
-		val_label.add_theme_font_weight_override("bold", true)
+		val_label.add_theme_font_size_override("bold", true)
 		if num_val >= 0.0:
 			val_label.add_theme_color_override("font_color", COLOR_TOTAL)
 		else:
@@ -451,7 +454,7 @@ func _make_indicator_row(label_text: String, value_text: String, raw_val: float,
 	val_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	val_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	val_label.add_theme_font_size_override("font_size", FONT_SIZE_TOTAL + 2)
-	val_label.add_theme_font_weight_override("bold", true)
+	val_label.add_theme_font_size_override("bold", true)
 	val_label.add_theme_color_override("font_color", COLOR_INDICATOR_VAL)
 
 	if not use_na:
@@ -481,7 +484,7 @@ func _make_section_label(text: String) -> Label:
 	label.custom_minimum_size = Vector2(0, ROW_HEIGHT + 4)
 	label.add_theme_font_size_override("font_size", FONT_SIZE_ROW + 1)
 	label.add_theme_color_override("font_color", COLOR_SECTION)
-	label.add_theme_font_weight_override("bold", true)
+	label.add_theme_font_size_override("bold", true)
 	return label
 
 

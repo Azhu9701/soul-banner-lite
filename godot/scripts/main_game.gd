@@ -2,6 +2,7 @@ extends Control
 class_name MainGame
 
 const T = preload("res://scripts/theme.gd")
+const AU = preload("res://scripts/animation_utils.gd")
 const AnnualReportPopupScript = preload("res://scripts/popups/annual_report_popup.gd")
 const OrderMeetingPopupScript = preload("res://scripts/popups/order_meeting_popup.gd")
 const FactoryDialogScript = preload("res://scripts/popups/factory_dialog.gd")
@@ -11,6 +12,7 @@ const FactoryDialogScript = preload("res://scripts/popups/factory_dialog.gd")
 # ── Core state ──
 var _state: Dictionary = {}
 var _decision_type: String = ""
+var _prev_cash: int = -1  # 用于 cash 标签数值动画
 
 # ── Top bar widgets ──
 var _year_lbl: Label
@@ -200,15 +202,16 @@ func _build_bottombar() -> void:
 	line.position = Vector2(0, 589); line.size = Vector2(960, 3)
 	add_child(line)
 
+	var btn: Button
 	_action_btn = _btn("等待服务器...", T.colors.brand, T.colors.white)
 	_action_btn.disabled = true; _action_btn.pressed.connect(_on_next_quarter)
 	bar.add_child(_action_btn)
 
-	bar.add_child(_btn_light("📊 年报")).pressed.connect(func():
-		if _annual_popup: _annual_popup.show_report(_state))
-	bar.add_child(_btn_light("📋 订货会"))
-	bar.add_child(_btn_light("🏗️ 工厂")).pressed.connect(func():
-		if _factory_dialog: _factory_dialog.show_dialog(_state))
+	btn = _btn_light("📊 年报"); bar.add_child(btn)
+	btn.pressed.connect(func(): if _annual_popup: _annual_popup.show_report(_state))
+	btn = _btn_light("📋 订货会"); bar.add_child(btn)
+	btn = _btn_light("🏗️ 工厂"); bar.add_child(btn)
+	btn.pressed.connect(func(): if _factory_dialog: _factory_dialog.show_dialog(_state))
 
 	var g := _gap(); bar.add_child(g)
 
@@ -262,6 +265,7 @@ func _on_msg(data: Dictionary) -> void:
 			_state = data.get("data", {}); _update_ui()
 		"ask_decision":
 			_bid_popup.visible = true
+			AU.pop_in(_bid_popup)
 		"message":
 			print("📢 ", data.get("data", ""))
 		"game_over":
@@ -272,56 +276,66 @@ func _on_msg(data: Dictionary) -> void:
 		"annual_report":
 			if _annual_popup: _annual_popup.show_report(data.get("data", {}))
 		"order_meeting":
-			if _order_popup:
-				var od := data.get("data", {})
-				_order_popup.show_orders(od.get("market",""), od.get("orders",[]), od.get("year",1))
+				if _order_popup:
+					var od: Dictionary = data.get("data", {})
+					_order_popup.show_orders(str(od.get("market","")), od.get("orders",[]), od.get("year",1))
 
 
 func _update_ui() -> void:
-	var s := _state
+	var s: Dictionary = _state
 	_year_lbl.text = "📅 第 %d 年" % s.get("game_year", 1)
 	_quarter_lbl.text = "Q%d" % s.get("game_quarter", 1)
-	_cash_lbl.text = "💰 %dM" % s.get("cash", 0)
 
-	var total_assets := s.get("cash", 0)
-	for f in s.get("factories", []): total_assets += f.get("value", 0)
+	var cash_val: int = s.get("cash", 0)
+	if _prev_cash >= 0 and _prev_cash != cash_val:
+		AU.animate_number(_cash_lbl, _prev_cash, cash_val, "💰 ", "M")
+	else:
+		_cash_lbl.text = "💰 %dM" % cash_val
+	_prev_cash = cash_val
+
+	var total_assets: int = s.get("cash", 0)
+	var factories: Array = s.get("factories", [])
+	for f: Dictionary in factories:
+		total_assets += f.get("value", 0)
 	_asset_lbl.text = "📊 资产 %dM" % total_assets
 
-	var ph := s.get("phase", 1)
-	var names := ["", "适应期", "市场竞争", "高阶经营", "复盘"]
+	var ph: int = s.get("phase", 1)
+	var names: PackedStringArray = ["", "适应期", "市场竞争", "高阶经营", "复盘"]
 	_phase_lbl2.text = "第%d节 · %s (%d-%d年)" % [ph, names[min(ph, 4)], _yr(ph)[0], _yr(ph)[1]]
 
-	if _prod_view: _prod_view.update(s.get("factories", []))
+	if _prod_view: _prod_view.update(factories)
 	if _inv_dashboard: _inv_dashboard.update(s)
 
 	# Update left market list
-	for c in _market_container.get_children(): c.queue_free()
-	for m in s.get("markets", []):
+	for c: Node in _market_container.get_children(): c.queue_free()
+	var markets: Array = s.get("markets", [])
+	for m: Dictionary in markets:
 		if m.get("developed", false):
-			_market_container.add_child(_label("✅ " + m.get("name","") + "  #" + str(m.get("rank",1)), T.body, T.colors.success))
+			_market_container.add_child(_label("✅ " + str(m.get("name","")) + "  #" + str(m.get("rank",1)), T.body, T.colors.success))
 		else:
-			_market_container.add_child(_label("◦  " + m.get("name",""), T.body, T.colors.text_muted))
+			_market_container.add_child(_label("◦  " + str(m.get("name","")), T.body, T.colors.text_muted))
 
-	# Update loan slots
-	for c in _loan_container.get_children(): c.queue_free()
-	var ll := s.get("long_term_loans", [])
-	var sl := s.get("short_term_loans", [])
-	_loan_container.add_child(_label("长贷 5%/年 | 已贷: %dM" % _sum_loans(ll), T.body, T.colors.text_medium))
-	_loan_container.add_child(_label("短贷 10%/年 | 已贷: %dM" % _sum_loans(sl), T.body, T.colors.text_medium))
+		# Update loan slots
+		for c: Node in _loan_container.get_children(): c.queue_free()
+		var ll: Array = s.get("long_term_loans", [])
+		var sl: Array = s.get("short_term_loans", [])
+		_loan_container.add_child(_label("长贷 5%/年 | 已贷: %dM" % _sum_loans(ll), T.body, T.colors.text_medium))
+		_loan_container.add_child(_label("短贷 10%/年 | 已贷: %dM" % _sum_loans(sl), T.body, T.colors.text_medium))
 
-	# Update R&D
-	for c in _rd_container.get_children(): c.queue_free()
-	for rd in s.get("products_rd", []):
-		var pname := "?"
-		match str(rd.get("product","")):
-			"ben_ma": pname = "🐴 奔马"
-			"meng_hu": pname = "🐯 猛虎"
-			"fei_ying": pname = "🦅 飞鹰"
-			"tian_long": pname = "🐉 天龙"
-		if rd.get("completed", false):
-			_rd_container.add_child(_label(pname + " ✓", T.body, T.colors.success))
-		else:
-			_rd_container.add_child(_label("%s  %d/%d" % [pname, rd.get("progress",0), rd.get("total",0)], T.body, T.colors.text_medium))
+		# Update R&D
+		for c: Node in _rd_container.get_children(): c.queue_free()
+		var rds: Array = s.get("products_rd", [])
+		for rd: Dictionary in rds:
+			var pname: String = "?"
+			match str(rd.get("product","")):
+				"ben_ma": pname = "🐴 奔马"
+				"meng_hu": pname = "🐯 猛虎"
+				"fei_ying": pname = "🦅 飞鹰"
+				"tian_long": pname = "🐉 天龙"
+			if rd.get("completed", false):
+				_rd_container.add_child(_label(pname + " ✓", T.body, T.colors.success))
+			else:
+				_rd_container.add_child(_label("%s  %d/%d" % [pname, rd.get("progress",0), rd.get("total",0)], T.body, T.colors.text_medium))
 
 
 # ═══════════════ BUTTON HANDLERS ═══════════════
@@ -377,10 +391,13 @@ func _btn(txt: String, bg: Color, fg: Color) -> Button:
 	var sb := StyleBoxFlat.new(); sb.bg_color = bg; sb.set_corner_radius_all(6)
 	sb.content_margin_left = 18; sb.content_margin_right = 18
 	sb.content_margin_top = 8; sb.content_margin_bottom = 8
-	b.add_theme_stylebox_override("normal", sb); return b
+	b.add_theme_stylebox_override("normal", sb)
+	b.pressed.connect(func(): AU.button_press(b))
+	return b
 
 func _btn_light(txt: String) -> Button:
-	return _btn(txt, T.colors.white, T.colors.text_medium)
+	var b := _btn(txt, T.colors.white, T.colors.text_medium)
+	return b
 
 func _section_head(txt: String) -> Label:
 	return _label(txt, T.h2, T.colors.text_strong)
