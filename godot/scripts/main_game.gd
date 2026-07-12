@@ -9,6 +9,11 @@ extends Control
 
 class_name MainGame
 
+# ── Preloads ──
+
+const AnnualReportPopupScript := preload("res://scripts/popups/annual_report_popup.gd")
+
+
 # ── Constants ──
 
 const INITIAL_WINDOW_SIZE: Vector2 = Vector2(800, 600)
@@ -39,6 +44,7 @@ var _popup_panel: Panel
 var _popup_title: Label
 var _popup_input: LineEdit
 var _popup_btn: Button
+var _annual_report_popup: Variant
 
 
 # ── Virtual Methods ──
@@ -61,6 +67,7 @@ func _build_ui() -> void:
 	_build_production_view()
 	_build_inventory_dashboard()
 	_build_popup()
+	_build_annual_report_popup()
 
 
 func _build_top_bar() -> void:
@@ -195,6 +202,18 @@ func _build_popup() -> void:
 	_popup_panel.add_child(cancel_btn)
 
 
+func _build_annual_report_popup() -> void:
+	var popup: Variant = AnnualReportPopupScript.new()
+	popup.name = "AnnualReportPopup"
+	popup.visible = false
+	popup.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	popup.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	# Add to PopupLayer (CanvasLayer) so it renders above everything
+	var popup_layer: CanvasLayer = $PopupLayer
+	popup_layer.add_child(popup)
+	_annual_report_popup = popup
+
+
 # ── Helpers ──
 
 static func _make_spacer() -> Control:
@@ -245,7 +264,10 @@ func _on_message_received(data: Dictionary) -> void:
 				pd.get("year", 1), pd.get("quarter", 0), pd.get("phase", "")
 			])
 		"annual_report":
-			_log("[color=green]📊 收到年度报告[/color]")
+			var report_data: Dictionary = data.get("data", {})
+			_log("[color=green]📊 收到年度报告 — 第 %d 年[/color]" % report_data.get("year", 0))
+			if _annual_report_popup:
+				_annual_report_popup.show_report(report_data)
 
 
 # ── UI Updates ──
