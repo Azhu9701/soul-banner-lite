@@ -304,39 +304,65 @@ pub struct BusinessGameState {
 #[serde(tag = "event")]
 pub enum GameEvent {
     /// 全量状态更新
-    StateUpdate(Box<BusinessGameState>),
+    StateUpdate {
+        data: Box<BusinessGameState>,
+    },
     /// 阶段变更
     PhaseChange {
-        year: u32,
-        quarter: u32,
-        phase: String,
+        data: PhaseChangeData,
     },
     /// 请求玩家决策
     AskDecision {
-        year: u32,
-        quarter: u32,
-        decision_type: String,
+        data: AskDecisionData,
     },
     /// 年度财务报告
-    AnnualReport(Box<AnnualReport>),
+    AnnualReport {
+        data: Box<AnnualReport>,
+    },
     /// 选单会
     OrderMeeting {
-        market: String,
-        available_orders: Vec<Order>,
+        data: OrderMeetingData,
     },
     /// 游戏结束
     GameOver {
-        reason: String,
+        data: GameOverData,
     },
     /// 通用消息
-    Message(String),
+    Message {
+        data: String,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PhaseChangeData {
+    pub year: u32,
+    pub quarter: u32,
+    pub phase: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AskDecisionData {
+    pub year: u32,
+    pub quarter: u32,
+    pub decision_type: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OrderMeetingData {
+    pub market: String,
+    pub available_orders: Vec<Order>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GameOverData {
+    pub reason: String,
 }
 
 // ── PlayerAction ──
 
 /// 客户端操作（客户端 -> 服务端）
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(tag = "action")]
+#[serde(tag = "action", rename_all = "snake_case")]
 pub enum PlayerAction {
     /// 开始游戏
     StartGame,

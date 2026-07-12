@@ -36,13 +36,15 @@ async fn handle_game_ws(
 
     // 发送初始状态 + 要求竞标决策
     if let Ok(gs) = state.business_sandbox.manager.get_state(&game_id).await {
-        let msg = serde_json::to_string(&GameEvent::StateUpdate(Box::new(gs))).unwrap();
+        let msg = serde_json::to_string(&GameEvent::StateUpdate { data: Box::new(gs) }).unwrap();
         let _ = sender.send(Message::Text(msg)).await;
     }
     let ask = serde_json::to_string(&GameEvent::AskDecision {
-        year: 1,
-        quarter: 0,
-        decision_type: "bidding".into(),
+        data: AskDecisionData {
+            year: 1,
+            quarter: 0,
+            decision_type: "bidding".into(),
+        },
     })
     .unwrap();
     let _ = sender.send(Message::Text(ask)).await;
@@ -77,7 +79,7 @@ async fn handle_game_ws(
                     }
                     Err(e) => {
                         let err_msg = serde_json::to_string(
-                            &GameEvent::Message(format!("错误: {}", e)),
+                            &GameEvent::Message { data: format!("错误: {}", e) },
                         )
                         .unwrap();
                         let _ = state

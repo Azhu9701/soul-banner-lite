@@ -197,12 +197,8 @@ impl GameManager {
                 instance.current_phase = "year_start".to_string();
                 let state = instance.state.clone();
                 Ok(vec![
-                    GameEvent::StateUpdate(Box::new(state)),
-                    GameEvent::AskDecision {
-                        year: instance.state.game_year,
-                        quarter: instance.state.game_quarter,
-                        decision_type: "bidding".to_string(),
-                    },
+                    GameEvent::StateUpdate { data: Box::new(state) },
+                    GameEvent::AskDecision { data: AskDecisionData { year: instance.state.game_year, quarter: instance.state.game_quarter, decision_type: "bidding".to_string() } },
                 ])
             }
 
@@ -233,16 +229,12 @@ impl GameManager {
                 instance.current_phase = "quarter_ops".to_string();
 
                 let mut events: Vec<GameEvent> = vec![
-                    GameEvent::Message(format!("提交竞标策略成功，营销费用 {}M", total_spend)),
-                    GameEvent::PhaseChange {
-                        year: instance.state.game_year,
-                        quarter: instance.state.game_quarter,
-                        phase: "quarter_ops".to_string(),
-                    },
+                    GameEvent::Message { data: format!("提交竞标策略成功，营销费用 {}M", total_spend) },
+                    GameEvent::PhaseChange { data: PhaseChangeData { year: instance.state.game_year, quarter: instance.state.game_quarter, phase: "quarter_ops".to_string() } },
                 ];
 
                 let state = instance.state.clone();
-                events.push(GameEvent::StateUpdate(Box::new(state)));
+                events.push(GameEvent::StateUpdate { data: Box::new(state) });
 
                 Ok(events)
             }
@@ -275,7 +267,7 @@ impl GameManager {
                 }
 
                 let state = instance.state.clone();
-                events.push(GameEvent::StateUpdate(Box::new(state)));
+                events.push(GameEvent::StateUpdate { data: Box::new(state) });
 
                 Ok(events)
             }
@@ -314,10 +306,10 @@ impl GameManager {
                 instance.state.cash += net_amount;
                 instance.annual_discount_fee += fee;
 
-                Ok(vec![GameEvent::Message(format!(
+                Ok(vec![GameEvent::Message { data: format!(
                     "贴现成功，获得 {}M，手续费 {}M",
                     net_amount, fee
-                ))])
+                ) }])
             }
 
             PlayerAction::TakeLoan { loan_type, amount } => {
@@ -342,10 +334,10 @@ impl GameManager {
                             annual_interest_rate: 10.0,
                         });
                         instance.state.cash += amount;
-                        Ok(vec![GameEvent::Message(format!(
+                        Ok(vec![GameEvent::Message { data: format!(
                             "短期贷款成功 {}M",
                             amount
-                        ))])
+                        ) }])
                     }
                     "long_term" | "long" => {
                         let equity = calculate_equity(&instance.state);
@@ -369,10 +361,10 @@ impl GameManager {
                             active: true,
                         });
                         instance.state.cash += amount;
-                        Ok(vec![GameEvent::Message(format!(
+                        Ok(vec![GameEvent::Message { data: format!(
                             "长期贷款成功 {}M",
                             amount
-                        ))])
+                        ) }])
                     }
                     _ => Err(GameError::InvalidAction(format!(
                         "未知贷款类型: {}",
@@ -403,10 +395,10 @@ impl GameManager {
             for ar in instance.state.accounts_receivable.drain(..) {
                 if ar.due_quarters <= 1 {
                     cash_in += ar.amount;
-                    events.push(GameEvent::Message(format!(
+                    events.push(GameEvent::Message { data: format!(
                         "应收账款到期入账 {}M",
                         ar.amount
-                    )));
+                    ) });
                 } else {
                     new_receivables.push(AccountReceivable {
                         amount: ar.amount,
@@ -429,10 +421,10 @@ impl GameManager {
                 loan.remaining_quarters = loan.remaining_quarters.saturating_sub(1);
                 if loan.remaining_quarters == 0 {
                     principal += loan.amount;
-                    events.push(GameEvent::Message(format!(
+                    events.push(GameEvent::Message { data: format!(
                         "短贷到期归还本金 {}M",
                         loan.amount
-                    )));
+                    ) });
                 } else {
                     remaining_loans.push(loan);
                 }
@@ -449,10 +441,10 @@ impl GameManager {
                 }
                 instance.state.cash -= total_st;
                 instance.annual_interest_expense += interest;
-                events.push(GameEvent::Message(format!(
+                events.push(GameEvent::Message { data: format!(
                     "支付短贷利息 {}M，归还本金 {}M",
                     interest, principal
-                )));
+                ) });
             }
         }
 
@@ -464,10 +456,10 @@ impl GameManager {
             rd.progress += 1;
             if rd.progress >= rd.total {
                 rd.completed = true;
-                events.push(GameEvent::Message(format!(
+                events.push(GameEvent::Message { data: format!(
                     "产品 {:?} 研发完成！",
                     rd.product
-                )));
+                ) });
             } else {
                 let rd_cost = product_rd_cost_per_quarter();
                 if instance.state.cash < rd_cost {
@@ -479,10 +471,10 @@ impl GameManager {
                 }
                 instance.state.cash -= rd_cost;
                 instance.annual_rd_expense += rd_cost;
-                events.push(GameEvent::Message(format!(
+                events.push(GameEvent::Message { data: format!(
                     "支付研发费用 {}M（{:?} {}/{}）",
                     rd_cost, rd.product, rd.progress, rd.total
-                )));
+                ) });
             }
         }
 
@@ -500,10 +492,10 @@ impl GameManager {
                 }
                 instance.state.cash -= cost;
                 instance.state.raw_material_inventory += orders;
-                events.push(GameEvent::Message(format!(
+                events.push(GameEvent::Message { data: format!(
                     "供应商交付原材料 {} 单位，支付 {}M",
                     orders, cost
-                )));
+                ) });
                 instance.state.raw_material_orders = 0;
             }
         }
@@ -512,10 +504,10 @@ impl GameManager {
         {
             let auto_order = 2u32;
             instance.state.raw_material_orders += auto_order;
-            events.push(GameEvent::Message(format!(
+            events.push(GameEvent::Message { data: format!(
                 "自动采购原材料 {} 单位",
                 auto_order
-            )));
+            ) });
         }
 
         // ── 第 6 步：更新生产状态（进度+1，完成转成品库） ──
@@ -539,10 +531,10 @@ impl GameManager {
                             quantity: 1,
                         });
                     }
-                    events.push(GameEvent::Message(format!(
+                    events.push(GameEvent::Message { data: format!(
                         "产线{} {:?} 生产完成，转入成品库",
                         wip.line_id, wip.product
-                    )));
+                    ) });
                 } else {
                     new_wip.push(wip);
                 }
@@ -556,7 +548,7 @@ impl GameManager {
                 LineStatus::Building(remaining) => {
                     if remaining <= 1 {
                         line.status = LineStatus::Idle;
-                        events.push(GameEvent::Message(format!("产线{} 建设完成", line.id)));
+                        events.push(GameEvent::Message { data: format!("产线{} 建设完成", line.id) });
                     } else {
                         line.status = LineStatus::Building(remaining - 1);
                     }
@@ -565,7 +557,7 @@ impl GameManager {
                     if remaining <= 1 {
                         line.product = Some(target);
                         line.status = LineStatus::Idle;
-                        events.push(GameEvent::Message(format!("产线{} 转产完成", line.id)));
+                        events.push(GameEvent::Message { data: format!("产线{} 转产完成", line.id) });
                     } else {
                         line.status = LineStatus::SwitchingTo(remaining - 1, target);
                     }
@@ -583,18 +575,18 @@ impl GameManager {
                 continue;
             };
             if instance.state.raw_material_inventory == 0 {
-                events.push(GameEvent::Message(format!(
+                events.push(GameEvent::Message { data: format!(
                     "产线{} 原材料不足，无法开始生产",
                     line.id
-                )));
+                ) });
                 continue;
             }
             let rm_cost = product.raw_material_cost();
             if instance.state.cash < rm_cost {
-                events.push(GameEvent::Message(format!(
+                events.push(GameEvent::Message { data: format!(
                     "产线{} 现金不足，无法开始生产",
                     line.id
-                )));
+                ) });
                 continue;
             }
             instance.state.cash -= rm_cost;
@@ -605,10 +597,10 @@ impl GameManager {
                 progress: 0,
             });
             line.status = LineStatus::Producing(product);
-            events.push(GameEvent::Message(format!(
+            events.push(GameEvent::Message { data: format!(
                 "产线{} 开始生产 {:?}",
                 line.id, product
-            )));
+            ) });
         }
 
         // ── 第 9 步：订单交付（有成品→交单→应收账款） ──
@@ -641,10 +633,10 @@ impl GameManager {
                 amount: total_amount,
                 due_quarters: order.account_period,
             });
-            events.push(GameEvent::Message(format!(
+            events.push(GameEvent::Message { data: format!(
                 "交付订单 {}，{:?} × {}，金额 {}M，账期 {} 季",
                 order.id, order.product, order.quantity, total_amount, order.account_period
-            )));
+            ) });
         }
 
         // ── 第 10 步：行政管理费 1M（检查破产） ──
@@ -657,7 +649,7 @@ impl GameManager {
         }
         instance.state.cash -= 1;
         instance.annual_admin_expense += 1;
-        events.push(GameEvent::Message("支付行政管理费 1M".to_string()));
+        events.push(GameEvent::Message { data: "支付行政管理费 1M".to_string() });
 
         // ── 破产检查：股东权益 < 0 ──
         if calculate_equity(&instance.state) < 0 {
@@ -694,10 +686,10 @@ impl GameManager {
             ));
         }
         instance.state.cash -= maintenance;
-        events.push(GameEvent::Message(format!(
+        events.push(GameEvent::Message { data: format!(
             "支付设备维护费 {}M（{} 条产线）",
             maintenance, line_count
-        )));
+        ) });
 
         // ── 第 2 步：固定资产折旧 20% ──
         let mut depreciation = 0u32;
@@ -706,10 +698,10 @@ impl GameManager {
             depreciation += dep;
             factory.value = factory.value.saturating_sub(dep);
         }
-        events.push(GameEvent::Message(format!(
+        events.push(GameEvent::Message { data: format!(
             "固定资产折旧 {}M",
             depreciation
-        )));
+        ) });
 
         // ── 第 3 步：长贷利息/还本 ──
         let mut lt_interest = 0u32;
@@ -725,10 +717,10 @@ impl GameManager {
             // 5 年期限到期还本
             if year >= slot.year + 5 {
                 lt_principal += slot.amount;
-                events.push(GameEvent::Message(format!(
+                events.push(GameEvent::Message { data: format!(
                     "长贷到期归还本金 {}M（{} 年贷款）",
                     slot.amount, slot.year
-                )));
+                ) });
                 // 不重新加入，贷款已关闭
             } else {
                 remaining_slots.push(slot);
@@ -746,10 +738,10 @@ impl GameManager {
             }
             instance.state.cash -= total_lt;
             instance.annual_interest_expense += lt_interest;
-            events.push(GameEvent::Message(format!(
+            events.push(GameEvent::Message { data: format!(
                 "支付长贷利息 {}M，归还本金 {}M",
                 lt_interest, lt_principal
-            )));
+            ) });
         }
 
         // ── 第 4 步：税款 ──
@@ -785,14 +777,14 @@ impl GameManager {
         instance.state.cash -= income_tax;
 
         let total_tax = sales_tax + income_tax;
-        events.push(GameEvent::Message(format!(
+        events.push(GameEvent::Message { data: format!(
             "纳税：营业税 {}M（营收 {}M × 3%），所得税 {}M（利润 {}M × 20%），合计 {}M",
             sales_tax,
             revenue,
             income_tax,
             profit_before_tax.max(0),
             total_tax
-        )));
+        ) });
 
         // ── 第 5 步：更新 phase ──
         if year >= 8 {
@@ -810,7 +802,7 @@ impl GameManager {
             depreciation,
         );
         instance.annual_reports.push(report.clone());
-        events.push(GameEvent::AnnualReport(Box::new(report)));
+        events.push(GameEvent::AnnualReport { data: Box::new(report) });
 
         // ── 第 6 步：破产检查 ──
         if calculate_equity(&instance.state) < 0 {
@@ -990,8 +982,6 @@ fn declare_game_over(
 ) -> Vec<GameEvent> {
     state.game_over = true;
     state.game_over_reason = Some(reason.to_string());
-    events.push(GameEvent::GameOver {
-        reason: reason.to_string(),
-    });
+    events.push(GameEvent::GameOver { data: GameOverData { reason: reason.to_string() } });
     std::mem::take(events)
 }
