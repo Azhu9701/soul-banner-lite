@@ -6,21 +6,9 @@ extends Control
 
 class_name ProductionView
 
+const T = preload("res://scripts/theme.gd")
+
 # ── Constants ──
-
-# 状态颜色
-const COLOR_IDLE: Color = Color(0.55, 0.55, 0.55)      # 灰色
-const COLOR_PRODUCING: Color = Color(0.15, 0.75, 0.25)  # 绿色
-const COLOR_BUILDING: Color = Color(0.15, 0.40, 0.80)   # 蓝色
-const COLOR_SWITCHING: Color = Color(1.00, 0.60, 0.00)  # 橙色
-
-# 产品颜色定义（4 种产品不同色块）
-const PRODUCT_COLORS: Dictionary = {
-	"奔马": Color(0.90, 0.25, 0.15),  # 红
-	"猛虎": Color(0.20, 0.55, 0.90),  # 蓝
-	"雄鹰": Color(0.85, 0.70, 0.10),  # 金
-	"飞龙": Color(0.50, 0.20, 0.80),  # 紫
-}
 
 # 产线类型显示文本
 const TYPE_LABELS: Dictionary = {
@@ -68,7 +56,7 @@ func update(factories: Array) -> void:
 		empty_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		empty_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		empty_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		empty_label.add_theme_color_override("font_color", COLOR_IDLE)
+		empty_label.add_theme_color_override("font_color", T.colors.text_muted)
 		_container.add_child(empty_label)
 		return
 
@@ -94,13 +82,13 @@ func _add_factory_section(factory: Dictionary) -> void:
 	var name_label := Label.new()
 	name_label.text = factory.get("name", "未知工厂")
 	name_label.add_theme_font_size_override("font_size", 14)
-	name_label.add_theme_color_override("font_color", Color(0.90, 0.90, 0.90))
+	name_label.add_theme_color_override("font_color", T.colors.text)
 	header.add_child(name_label)
 
 	var cap_label := Label.new()
 	var capacity: int = factory.get("capacity", 0)
 	cap_label.text = " (容量:%d)" % capacity
-	cap_label.add_theme_color_override("font_color", COLOR_IDLE)
+	cap_label.add_theme_color_override("font_color", T.colors.text_muted)
 	header.add_child(cap_label)
 
 	# 弹性空间
@@ -164,7 +152,7 @@ func _make_progress_bar(line: Dictionary) -> Control:
 
 	# 背景条
 	var bg := ColorRect.new()
-	bg.color = Color(0.15, 0.15, 0.15)
+	bg.color = T.colors.border
 	bg.size = Vector2(BAR_WIDTH, BAR_HEIGHT)
 	bg.position = Vector2(0, (ROW_HEIGHT - BAR_HEIGHT) * 0.5)
 	container.add_child(bg)
@@ -184,7 +172,7 @@ func _make_progress_bar(line: Dictionary) -> Control:
 		# 百分比文字
 		var pct_label := Label.new()
 		pct_label.text = "%d%%" % (progress_val * 100.0)
-		pct_label.add_theme_color_override("font_color", Color.WHITE)
+		pct_label.add_theme_color_override("font_color", T.colors.white)
 		pct_label.add_theme_font_size_override("font_size", 10)
 		pct_label.position = Vector2(4, (ROW_HEIGHT - BAR_HEIGHT) * 0.5)
 		pct_label.size = Vector2(BAR_WIDTH - 8, BAR_HEIGHT)
@@ -206,7 +194,9 @@ func _make_product_icon(product_name: String) -> Control:
 	rect.size = Vector2(ICON_SIZE, ICON_SIZE)
 	rect.position = Vector2(4, (ROW_HEIGHT - ICON_SIZE) * 0.5)
 
-	var color: Color = PRODUCT_COLORS.get(product_name, Color(0.50, 0.50, 0.50))
+	var color: Color = T.product_color(product_name)
+	if color == T.colors.idle:
+		color = T.colors.text_muted
 	rect.color = color
 	container.add_child(rect)
 
@@ -243,12 +233,12 @@ func _get_status_text(line: Dictionary) -> String:
 func _get_status_color(status: String) -> Color:
 	match status:
 		"idle":
-			return COLOR_IDLE
+			return T.colors.idle
 		"producing":
-			return COLOR_PRODUCING
+			return T.colors.producing
 		"building":
-			return COLOR_BUILDING
+			return T.colors.building
 		"switching_to":
-			return COLOR_SWITCHING
+			return T.colors.switching
 		_:
-			return COLOR_IDLE
+			return T.colors.idle

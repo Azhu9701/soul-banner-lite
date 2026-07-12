@@ -12,30 +12,32 @@ extends Panel
 
 class_name OrderMeetingPopup
 
+const T = preload("res://scripts/theme.gd")
+
 # ── Colors ──
 
-const OVERLAY_COLOR: Color = Color(0.0, 0.0, 0.0, 0.65)
-const PANEL_BG: Color = Color(0.12, 0.12, 0.15)
-const SECTION_BG: Color = Color(0.10, 0.10, 0.14)
-const CARD_BG: Color = Color(0.16, 0.16, 0.20)
-const CARD_BG_SELECTED: Color = Color(0.20, 0.30, 0.24)
-const CARD_BORDER: Color = Color(0.30, 0.30, 0.35)
-const CARD_BORDER_SELECTED: Color = Color(0.30, 1.00, 0.50)
-const CARD_BORDER_HOVER: Color = Color(0.45, 0.45, 0.50)
-const COLOR_TITLE: Color = Color(1.0, 1.0, 1.0)
-const COLOR_LABEL: Color = Color(0.70, 0.70, 0.75)
-const COLOR_VALUE: Color = Color(0.95, 0.85, 0.30)
-const COLOR_SECTION: Color = Color(0.55, 0.80, 0.95)
-const COLOR_URGENT: Color = Color(1.00, 0.25, 0.25)
-const COLOR_BAR: Color = Color(0.30, 0.70, 0.95)
-const COLOR_BAR_LABEL: Color = Color(0.85, 0.85, 0.90)
-const COLOR_SEPARATOR: Color = Color(0.30, 0.30, 0.30)
-const COLOR_BTN_BG: Color = Color(0.18, 0.55, 0.28)
-const COLOR_BTN_HOVER: Color = Color(0.22, 0.65, 0.32)
-const COLOR_BTN_DISABLED: Color = Color(0.15, 0.15, 0.18)
-const COLOR_CLOSE_BG: Color = Color(0.35, 0.20, 0.20)
-const COLOR_CLOSE_HOVER: Color = Color(0.50, 0.25, 0.25)
-const COLOR_ACCENT: Color = Color(0.55, 0.80, 0.95)
+var OVERLAY_COLOR: Color = Color(0.0, 0.0, 0.0, 0.65)
+var PANEL_BG: Color = T.colors.card
+var SECTION_BG: Color = T.colors.bg
+var CARD_BG: Color = T.colors.bg
+var CARD_BG_SELECTED: Color = T.colors.success_bg
+var CARD_BORDER: Color = T.colors.border
+var CARD_BORDER_SELECTED: Color = T.colors.success
+var CARD_BORDER_HOVER: Color = T.colors.text_muted
+var COLOR_TITLE: Color = T.colors.text_strong
+var COLOR_LABEL: Color = T.colors.text_muted
+var COLOR_VALUE: Color = T.colors.text_strong
+var COLOR_SECTION: Color = T.colors.brand
+var COLOR_URGENT: Color = T.colors.danger
+var COLOR_BAR: Color = T.colors.brand
+var COLOR_BAR_LABEL: Color = T.colors.text
+var COLOR_SEPARATOR: Color = T.colors.border
+var COLOR_BTN_BG: Color = T.colors.success
+var COLOR_BTN_HOVER: Color = T.colors.success_bg
+var COLOR_BTN_DISABLED: Color = T.colors.border
+var COLOR_CLOSE_BG: Color = T.colors.danger
+var COLOR_CLOSE_HOVER: Color = T.colors.danger_bg
+var COLOR_ACCENT: Color = T.colors.brand
 
 # ── Layout Constants ──
 
@@ -54,11 +56,11 @@ const FONT_SIZE_CARD_DETAIL: int = 11
 const MAX_VISIBLE_CARDS: int = 6  # max before scroll
 
 # Product visual metadata
-const PRODUCT_MAP: Dictionary = {
-	"ben_ma": {"emoji": "🐴", "name": "奔马", "color": Color(0.76, 0.42, 0.22)},
-	"meng_hu": {"emoji": "🐯", "name": "猛虎", "color": Color(0.90, 0.60, 0.20)},
-	"fei_ying": {"emoji": "🦅", "name": "飞鹰", "color": Color(0.25, 0.60, 0.90)},
-	"xiang_long": {"emoji": "🐉", "name": "翔龙", "color": Color(0.80, 0.20, 0.20)},
+var PRODUCT_MAP: Dictionary = {
+	"ben_ma": {"emoji": "🐴", "name": "奔马", "color": T.colors.benma},
+	"meng_hu": {"emoji": "🐯", "name": "猛虎", "color": T.colors.menghu},
+	"fei_ying": {"emoji": "🦅", "name": "飞鹰", "color": T.colors.feiying},
+	"xiang_long": {"emoji": "🐉", "name": "翔龙", "color": T.colors.tianlong},
 }
 
 # ── Nodes ──
@@ -247,7 +249,7 @@ func _build_ui() -> void:
 		POPUP_HEIGHT - 44
 	)
 	_submit_btn.size = Vector2(220, 34)
-	_submit_btn.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0))
+	_submit_btn.add_theme_color_override("font_color", T.colors.white)
 	_submit_btn.add_theme_stylebox_override("normal", _make_stylebox(COLOR_BTN_BG))
 	_submit_btn.add_theme_stylebox_override("hover", _make_stylebox(COLOR_BTN_HOVER))
 	_submit_btn.add_theme_stylebox_override("disabled", _make_stylebox(COLOR_BTN_DISABLED))
@@ -335,7 +337,7 @@ func _make_order_card(order: Dictionary) -> Panel:
 	var urgent: bool = order.get("urgent", false)
 
 	# Get product visual info
-	var product_info: Dictionary = PRODUCT_MAP.get(product, {"emoji": "📦", "name": product, "color": Color(0.50, 0.50, 0.55)})
+	var product_info: Dictionary = PRODUCT_MAP.get(product, {"emoji": "📦", "name": product, "color": T.colors.text_muted})
 
 	# Card panel
 	var card := Panel.new()
@@ -358,7 +360,7 @@ func _make_order_card(order: Dictionary) -> Panel:
 
 	# Product color swatch
 	var swatch := ColorRect.new()
-	swatch.color = product_info.get("color", Color(0.5, 0.5, 0.5))
+	swatch.color = product_info.get("color", T.colors.text_muted)
 	swatch.custom_minimum_size = Vector2(8, CARD_HEIGHT - 8)
 	swatch.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	hb.add_child(swatch)
@@ -429,7 +431,7 @@ func _make_order_card(order: Dictionary) -> Panel:
 	status_label.name = "StatusLabel"
 	status_label.text = "  [ 点击选中 ]"
 	status_label.add_theme_font_size_override("font_size", FONT_SIZE_CARD_DETAIL - 1)
-	status_label.add_theme_color_override("font_color", Color(0.45, 0.45, 0.50))
+	status_label.add_theme_color_override("font_color", T.colors.text_muted)
 	row3.add_child(status_label)
 
 	content.add_child(row3)
@@ -497,7 +499,7 @@ func _update_selection_status_label(order_id: String) -> void:
 		status_label.add_theme_color_override("font_color", CARD_BORDER_SELECTED)
 	else:
 		status_label.text = "  [ 点击选中 ]"
-		status_label.add_theme_color_override("font_color", Color(0.45, 0.45, 0.50))
+		status_label.add_theme_color_override("font_color", T.colors.text_muted)
 
 
 func _update_submit_button() -> void:
@@ -519,12 +521,12 @@ func _generate_sample_predictions() -> Array:
 
 
 static func _get_bar_color(index: int, total: int) -> Color:
-	# Gradient from blue to green
+	# Gradient from brand to success
 	var t: float = float(index) / float(max(total - 1, 1))
 	return Color(
-		0.30 + t * 0.20,
-		0.60 + t * 0.30,
-		0.95 - t * 0.30
+		T.colors.brand.r + (T.colors.success.r - T.colors.brand.r) * t,
+		T.colors.brand.g + (T.colors.success.g - T.colors.brand.g) * t,
+		T.colors.brand.b + (T.colors.success.b - T.colors.brand.b) * t,
 	)
 
 
@@ -538,7 +540,7 @@ static func _make_stylebox(bg_color: Color) -> StyleBoxFlat:
 	return sb
 
 
-static func _make_section_header(text: String) -> Label:
+func _make_section_header(text: String) -> Label:
 	var label := Label.new()
 	label.text = "  %s" % text
 	label.custom_minimum_size = Vector2(0, 24)

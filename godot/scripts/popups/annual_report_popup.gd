@@ -9,24 +9,26 @@ extends Panel
 
 class_name AnnualReportPopup
 
+const T = preload("res://scripts/theme.gd")
+
 # ── Colors ──
 
-const OVERLAY_COLOR: Color = Color(0.0, 0.0, 0.0, 0.65)
-const PANEL_COLOR: Color = Color(0.12, 0.12, 0.15)
-const COLOR_TITLE: Color = Color(1.0, 1.0, 1.0)
-const COLOR_SECTION: Color = Color(0.55, 0.80, 0.95)
-const COLOR_LABEL: Color = Color(0.70, 0.70, 0.70)
-const COLOR_VALUE: Color = Color(0.95, 0.85, 0.30)
-const COLOR_TOTAL: Color = Color(0.20, 0.90, 0.40)
-const COLOR_NEGATIVE: Color = Color(0.90, 0.30, 0.25)
-const COLOR_SEPARATOR: Color = Color(0.30, 0.30, 0.30)
-const COLOR_CLOSE_BG: Color = Color(0.35, 0.20, 0.20)
-const COLOR_CLOSE_HOVER: Color = Color(0.50, 0.25, 0.25)
-const COLOR_BG_ALT: Color = Color(0.14, 0.14, 0.18, 0.5)
-const COLOR_TAB_BG: Color = Color(0.10, 0.10, 0.12)
-const COLOR_TAB_FG: Color = Color(0.18, 0.18, 0.22)
-const COLOR_INDICATOR_LABEL: Color = Color(0.90, 0.90, 0.90)
-const COLOR_INDICATOR_VAL: Color = Color(0.40, 0.90, 1.00)
+var OVERLAY_COLOR: Color = Color(0.0, 0.0, 0.0, 0.65)
+var PANEL_COLOR: Color = T.colors.card
+var COLOR_TITLE: Color = T.colors.text_strong
+var COLOR_SECTION: Color = T.colors.brand
+var COLOR_LABEL: Color = T.colors.text_muted
+var COLOR_VALUE: Color = T.colors.text_strong
+var COLOR_TOTAL: Color = T.colors.success
+var COLOR_NEGATIVE: Color = T.colors.danger
+var COLOR_SEPARATOR: Color = T.colors.border
+var COLOR_CLOSE_BG: Color = T.colors.danger
+var COLOR_CLOSE_HOVER: Color = T.colors.danger_bg
+var COLOR_BG_ALT: Color = T.colors.border_light
+var COLOR_TAB_BG: Color = T.colors.border
+var COLOR_TAB_FG: Color = T.colors.card
+var COLOR_INDICATOR_LABEL: Color = T.colors.text
+var COLOR_INDICATOR_VAL: Color = T.colors.success
 
 # ── Layout Constants ──
 
@@ -202,8 +204,8 @@ func _build_ui() -> void:
 	_tab_container.name = "TabContainer"
 	_tab_container.position = Vector2(10, 56)
 	_tab_container.size = Vector2(PANEL_WIDTH - 20, PANEL_HEIGHT - 72)
-	_tab_container.add_theme_color_override("font_color", Color(0.85, 0.85, 0.85))
-	_tab_container.add_theme_color_override("font_selected_color", Color(1.0, 1.0, 1.0))
+	_tab_container.add_theme_color_override("font_color", T.colors.text)
+	_tab_container.add_theme_color_override("font_selected_color", T.colors.text_strong)
 	_tab_container.add_theme_stylebox_override("panel", _make_stylebox(COLOR_TAB_BG))
 	_tab_container.add_theme_stylebox_override("tab_fg", _make_stylebox(COLOR_TAB_FG))
 	_tab_container.tab_alignment = TabBar.ALIGNMENT_LEFT
@@ -347,7 +349,7 @@ func _populate_indicators_tab() -> void:
 	var note := Label.new()
 	note.text = "  提示：资产负债率 < 50% 为健康，流动比率 > 1.5 为佳。"
 	note.add_theme_font_size_override("font_size", 11)
-	note.add_theme_color_override("font_color", Color(0.55, 0.55, 0.60))
+	note.add_theme_color_override("font_color", T.colors.text_muted)
 	note.custom_minimum_size = Vector2(0, ROW_HEIGHT)
 	container.add_child(note)
 
@@ -381,7 +383,7 @@ func _make_data_row(label_text: String, value: Variant, is_total: bool, is_major
 
 	if is_major:
 		label.add_theme_font_size_override("font_size", FONT_SIZE_TOTAL + 1)
-		label.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0))
+		label.add_theme_color_override("font_color", T.colors.text_strong)
 
 	hb.add_child(label)
 
@@ -458,7 +460,7 @@ func _make_indicator_row(label_text: String, value_text: String, raw_val: float,
 			if raw_val < 50.0:
 				val_label.add_theme_color_override("font_color", COLOR_TOTAL)
 			elif raw_val < 70.0:
-				val_label.add_theme_color_override("font_color", Color(0.95, 0.85, 0.30))
+				val_label.add_theme_color_override("font_color", T.colors.warning)
 			else:
 				val_label.add_theme_color_override("font_color", COLOR_NEGATIVE)
 		else:

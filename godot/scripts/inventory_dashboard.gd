@@ -5,24 +5,26 @@ extends Control
 
 class_name InventoryDashboard
 
+const T = preload("res://scripts/theme.gd")
+
 # ── Constants ──
 
-# 颜色
-const COLOR_HEADER: Color = Color(0.90, 0.90, 0.90)
-const COLOR_LABEL: Color = Color(0.70, 0.70, 0.70)
-const COLOR_VALUE: Color = Color(0.90, 0.90, 0.30)
-const COLOR_SECTION: Color = Color(0.55, 0.80, 0.95)
-const COLOR_AR: Color = Color(0.90, 0.70, 0.20)
-const COLOR_PROGRESS_BG: Color = Color(0.15, 0.15, 0.15)
-const COLOR_PROGRESS_FILL: Color = Color(0.15, 0.75, 0.25)
-const COLOR_SEPARATOR: Color = Color(0.30, 0.30, 0.30)
+# 颜色（引用 Theme 常量）
+var COLOR_HEADER: Color = T.colors.text_strong
+var COLOR_LABEL: Color = T.colors.text_muted
+var COLOR_VALUE: Color = T.colors.text_strong
+var COLOR_SECTION: Color = T.colors.brand
+var COLOR_AR: Color = T.colors.warning
+var COLOR_PROGRESS_BG: Color = T.colors.border
+var COLOR_PROGRESS_FILL: Color = T.colors.success
+var COLOR_SEPARATOR: Color = T.colors.border
 
-# 产品颜色（与 production_view.gd 保持一致）
-const PRODUCT_COLORS: Dictionary = {
-	"奔马": Color(0.90, 0.25, 0.15),
-	"猛虎": Color(0.20, 0.55, 0.90),
-	"雄鹰": Color(0.85, 0.70, 0.10),
-	"飞龙": Color(0.50, 0.20, 0.80),
+# 产品颜色（引用 Theme 常量）
+var PRODUCT_COLORS: Dictionary = {
+	"奔马": T.colors.benma,
+	"猛虎": T.colors.menghu,
+	"雄鹰": T.colors.feiying,
+	"飞龙": T.colors.tianlong,
 }
 
 # 布局常量
@@ -135,7 +137,7 @@ func _build_finished_goods(state: Dictionary) -> void:
 
 	for product_name: String in items:
 		var qty: int = items[product_name]
-		var color: Color = PRODUCT_COLORS.get(product_name, Color(0.50, 0.50, 0.50))
+		var color: Color = PRODUCT_COLORS.get(product_name, T.colors.text_muted)
 
 		var plabel := Label.new()
 		plabel.text = "%s x%d" % [product_name, qty]

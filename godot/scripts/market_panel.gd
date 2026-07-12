@@ -6,6 +6,8 @@ extends Control
 
 class_name MarketPanel
 
+const T = preload("res://scripts/theme.gd")
+
 # ── Signals ──
 
 ## 用户点击"提交竞标"时触发，参数为竞标策略数组。
@@ -15,12 +17,12 @@ signal submit_bidding(strategies: Array)
 
 # ── Constants ──
 
-const COLOR_HEADER: Color = Color(0.90, 0.90, 0.90)
-const COLOR_LABEL: Color = Color(0.70, 0.70, 0.70)
-const COLOR_VALUE: Color = Color(0.90, 0.90, 0.30)
-const COLOR_DEVELOPED_TAG: Color = Color(0.15, 0.75, 0.25)
-const COLOR_UNDEVELOPED_TAG: Color = Color(0.70, 0.30, 0.30)
-const COLOR_BORDER: Color = Color(0.30, 0.30, 0.30)
+var COLOR_HEADER: Color = T.colors.text_strong
+var COLOR_LABEL: Color = T.colors.text_muted
+var COLOR_VALUE: Color = T.colors.text_strong
+var COLOR_DEVELOPED_TAG: Color = T.colors.success
+var COLOR_UNDEVELOPED_TAG: Color = T.colors.danger
+var COLOR_BORDER: Color = T.colors.border
 
 const ROW_HEIGHT: float = 24.0
 const INPUT_WIDTH: float = 60.0
@@ -89,6 +91,8 @@ func _build_ui() -> void:
 	_marketing_input.text = "2"
 	_marketing_input.custom_minimum_size = Vector2(INPUT_WIDTH, 0)
 	_marketing_input.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_marketing_input.add_theme_stylebox_override("normal", T._make_stylebox(T.colors.card, 4))
+	_marketing_input.add_theme_stylebox_override("focus", T._make_stylebox(T.colors.brand_light, 4))
 	input_row.add_child(_marketing_input)
 
 	var unit_label := Label.new()
@@ -103,6 +107,9 @@ func _build_ui() -> void:
 
 	_submit_btn = Button.new()
 	_submit_btn.text = "提交竞标"
+	_submit_btn.add_theme_color_override("font_color", T.colors.white)
+	_submit_btn.add_theme_stylebox_override("normal", T._make_stylebox(T.colors.brand, 6))
+	_submit_btn.add_theme_stylebox_override("hover", T._make_stylebox(T.colors.brand_hover, 6))
 	_submit_btn.pressed.connect(_on_submit_bidding)
 	input_row.add_child(_submit_btn)
 
@@ -118,7 +125,7 @@ func _build_ui() -> void:
 	_show_default_markets()
 
 
-static func _make_separator() -> HSeparator:
+func _make_separator() -> HSeparator:
 	var sep := HSeparator.new()
 	sep.modulate = COLOR_BORDER
 	return sep

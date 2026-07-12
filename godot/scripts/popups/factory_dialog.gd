@@ -11,28 +11,30 @@ extends Panel
 
 class_name FactoryDialog
 
+const T = preload("res://scripts/theme.gd")
+
 # ── Colors ──
 
-const OVERLAY_COLOR: Color = Color(0.0, 0.0, 0.0, 0.65)
-const PANEL_BG: Color = Color(0.12, 0.12, 0.15)
-const COLOR_TITLE: Color = Color(1.0, 1.0, 1.0)
-const COLOR_SECTION: Color = Color(0.55, 0.80, 0.95)
-const COLOR_LABEL: Color = Color(0.70, 0.70, 0.75)
-const COLOR_VALUE: Color = Color(0.95, 0.85, 0.30)
-const COLOR_ACCENT: Color = Color(0.30, 0.90, 0.40)
-const COLOR_WARN: Color = Color(0.95, 0.70, 0.20)
-const COLOR_SEPARATOR: Color = Color(0.30, 0.30, 0.30)
-const COLOR_BTN_BG: Color = Color(0.18, 0.55, 0.28)
-const COLOR_BTN_HOVER: Color = Color(0.22, 0.65, 0.32)
-const COLOR_BTN_DISABLED: Color = Color(0.15, 0.15, 0.18)
-const COLOR_CLOSE_BG: Color = Color(0.35, 0.20, 0.20)
-const COLOR_CLOSE_HOVER: Color = Color(0.50, 0.25, 0.25)
-const COLOR_LINE_BTN: Color = Color(0.18, 0.30, 0.45)
-const COLOR_LINE_BTN_HOVER: Color = Color(0.22, 0.35, 0.55)
-const COLOR_LINE_BTN_SELECTED: Color = Color(0.25, 0.50, 0.65)
-const COLOR_LOAN_BTN: Color = Color(0.30, 0.20, 0.15)
-const COLOR_LOAN_BTN_HOVER: Color = Color(0.40, 0.25, 0.20)
-const COLOR_LOAN_BTN_SELECTED: Color = Color(0.50, 0.30, 0.20)
+var OVERLAY_COLOR: Color = Color(0.0, 0.0, 0.0, 0.65)
+var PANEL_BG: Color = T.colors.card
+var COLOR_TITLE: Color = T.colors.text_strong
+var COLOR_SECTION: Color = T.colors.brand
+var COLOR_LABEL: Color = T.colors.text_muted
+var COLOR_VALUE: Color = T.colors.text_strong
+var COLOR_ACCENT: Color = T.colors.success
+var COLOR_WARN: Color = T.colors.warning
+var COLOR_SEPARATOR: Color = T.colors.border
+var COLOR_BTN_BG: Color = T.colors.success
+var COLOR_BTN_HOVER: Color = T.colors.success_bg
+var COLOR_BTN_DISABLED: Color = T.colors.border
+var COLOR_CLOSE_BG: Color = T.colors.danger
+var COLOR_CLOSE_HOVER: Color = T.colors.danger_bg
+var COLOR_LINE_BTN: Color = T.colors.building
+var COLOR_LINE_BTN_HOVER: Color = T.colors.brand_light
+var COLOR_LINE_BTN_SELECTED: Color = T.colors.brand
+var COLOR_LOAN_BTN: Color = T.colors.warning
+var COLOR_LOAN_BTN_HOVER: Color = T.colors.warning_bg
+var COLOR_LOAN_BTN_SELECTED: Color = T.colors.warning
 
 # ── Layout Constants ──
 
@@ -195,7 +197,7 @@ func _build_ui() -> void:
 		btn.position = Vector2(line_btn_x, y_pos)
 		btn.size = Vector2(124, 44)
 		btn.add_theme_font_size_override("font_size", FONT_SIZE_SMALL)
-		btn.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0))
+		btn.add_theme_color_override("font_color", T.colors.white)
 		btn.add_theme_stylebox_override("normal", _make_stylebox(COLOR_LINE_BTN))
 		btn.add_theme_stylebox_override("hover", _make_stylebox(COLOR_LINE_BTN_HOVER))
 		btn.connect("pressed", _on_line_type_selected.bind(lt))
@@ -218,7 +220,7 @@ func _build_ui() -> void:
 	confirm_line_btn.text = "✅ 确认订购产线"
 	confirm_line_btn.position = Vector2(120, y_pos)
 	confirm_line_btn.size = Vector2(180, 30)
-	confirm_line_btn.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0))
+	confirm_line_btn.add_theme_color_override("font_color", T.colors.white)
 	confirm_line_btn.add_theme_stylebox_override("normal", _make_stylebox(COLOR_BTN_BG))
 	confirm_line_btn.add_theme_stylebox_override("hover", _make_stylebox(COLOR_BTN_HOVER))
 	confirm_line_btn.connect("pressed", _on_confirm_line_pressed)
@@ -241,7 +243,7 @@ func _build_ui() -> void:
 		btn.position = Vector2(loan_btn_x, y_pos)
 		btn.size = Vector2(64, 30)
 		btn.add_theme_font_size_override("font_size", FONT_SIZE_BODY)
-		btn.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0))
+		btn.add_theme_color_override("font_color", T.colors.white)
 		btn.add_theme_stylebox_override("normal", _make_stylebox(COLOR_LOAN_BTN))
 		btn.add_theme_stylebox_override("hover", _make_stylebox(COLOR_LOAN_BTN_HOVER))
 		btn.connect("pressed", _on_loan_type_selected.bind(lt))
@@ -289,7 +291,7 @@ func _build_ui() -> void:
 	confirm_loan_btn.text = "✅ 确认贷款"
 	confirm_loan_btn.position = Vector2(140, y_pos)
 	confirm_loan_btn.size = Vector2(140, 30)
-	confirm_loan_btn.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0))
+	confirm_loan_btn.add_theme_color_override("font_color", T.colors.white)
 	confirm_loan_btn.add_theme_stylebox_override("normal", _make_stylebox(COLOR_BTN_BG))
 	confirm_loan_btn.add_theme_stylebox_override("hover", _make_stylebox(COLOR_BTN_HOVER))
 	confirm_loan_btn.connect("pressed", _on_confirm_loan_pressed)
@@ -323,7 +325,7 @@ func _build_ui() -> void:
 	_discount_confirm_btn.text = "✅ 确认贴现"
 	_discount_confirm_btn.position = Vector2(140, y_pos)
 	_discount_confirm_btn.size = Vector2(140, 30)
-	_discount_confirm_btn.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0))
+	_discount_confirm_btn.add_theme_color_override("font_color", T.colors.white)
 	_discount_confirm_btn.add_theme_stylebox_override("normal", _make_stylebox(COLOR_BTN_BG))
 	_discount_confirm_btn.add_theme_stylebox_override("hover", _make_stylebox(COLOR_BTN_HOVER))
 	_discount_confirm_btn.connect("pressed", _on_confirm_discount_pressed)
