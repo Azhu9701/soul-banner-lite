@@ -1,0 +1,10 @@
+78098b89c88a74ebe8c20117b8754620
+::res://::1783875533
+::res://scenes/::1783875208
+MainGame.tscn::PackedScene::-1::1783875208::0::1::::<><><>0<>0<><>::res://scripts/main_game.gd
+::res://scripts/::1783875947
+main_game.gd::GDScript::1372126389174432184::1783875203::0::1::::<>Control<><>0<>0<><>::
+websocket_manager.gd::GDScript::76985378676355443::1783875947::0::1::::<>Node<><>0<>0<><>::
+::res://scripts/popups/::1783875189
+::res://tests/::1783875189
+::res://ui/::1783875189

@@ -1,0 +1,10 @@
+[application]
+config/name="创业沙盘"
+config/description="商业全价值链经营模拟器"
+run/main_scene="res://scenes/MainGame.tscn"
+
+[autoload]
+WebSocketManager="*res://scripts/websocket_manager.gd"
+
+[rendering]
+renderer/backend="opengl3"
