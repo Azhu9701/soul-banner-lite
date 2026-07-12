@@ -13,6 +13,8 @@ class_name MainGame
 
 const AnnualReportPopupScript := preload("res://scripts/popups/annual_report_popup.gd")
 const OrderMeetingPopupScript := preload("res://scripts/popups/order_meeting_popup.gd")
+const MarketPanelScript := preload("res://scripts/market_panel.gd")
+const FactoryDialogScript := preload("res://scripts/popups/factory_dialog.gd")
 
 
 # ── Constants ──
@@ -33,6 +35,7 @@ var _game_state: Dictionary = {}
 var _decision_type: String = ""
 var _production_view: ProductionView
 var _inventory_dashboard: InventoryDashboard
+var _market_panel: Variant
 
 # Lazy-init UI nodes (created in _build_ui)
 var _year_label: Label
@@ -47,6 +50,7 @@ var _popup_input: LineEdit
 var _popup_btn: Button
 var _annual_report_popup: Variant
 var _order_meeting_popup: Variant
+var _factory_dialog: Variant
 
 
 # ── Virtual Methods ──
@@ -66,11 +70,13 @@ func _build_ui() -> void:
 	_build_top_bar()
 	_build_message_log()
 	_build_bottom_bar()
+	_build_market_panel()
 	_build_production_view()
 	_build_inventory_dashboard()
 	_build_popup()
 	_build_annual_report_popup()
 	_build_order_meeting_popup()
+	_build_factory_dialog()
 
 
 func _build_top_bar() -> void:
@@ -137,11 +143,6 @@ func _build_bottom_bar() -> void:
 
 
 func _build_production_view() -> void:
-	# 清空占位节点（场景定义中已有的 ProductionArea VBoxContainer）
-	for child in _production_area.get_children():
-		_production_area.remove_child(child)
-		child.queue_free()
-
 	var prod_view := ProductionView.new()
 	prod_view.name = "ProductionView"
 	prod_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -151,7 +152,6 @@ func _build_production_view() -> void:
 
 
 func _build_inventory_dashboard() -> void:
-	# 右侧库存看板面板
 	var panel := Panel.new()
 	panel.position = Vector2(470.0, 56.0)
 	panel.size = Vector2(310.0, 380.0)
@@ -162,6 +162,14 @@ func _build_inventory_dashboard() -> void:
 	_inventory_dashboard.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_inventory_dashboard.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	panel.add_child(_inventory_dashboard)
+
+
+func _build_market_panel() -> void:
+	_market_panel = MarketPanelScript.new()
+	_market_panel.name = "MarketPanel"
+	_market_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_market_panel.submit_bidding.connect(_on_market_panel_submit)
+	_production_area.add_child(_market_panel)
 
 
 func _build_popup() -> void:
@@ -211,7 +219,6 @@ func _build_annual_report_popup() -> void:
 	popup.visible = false
 	popup.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	popup.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	# Add to PopupLayer (CanvasLayer) so it renders above everything
 	var popup_layer: CanvasLayer = $PopupLayer
 	popup_layer.add_child(popup)
 	_annual_report_popup = popup
@@ -229,6 +236,20 @@ func _build_order_meeting_popup() -> void:
 	_order_meeting_popup = popup
 
 
+func _build_factory_dialog() -> void:
+	var dialog: Variant = FactoryDialogScript.new()
+	dialog.name = "FactoryDialog"
+	dialog.visible = false
+	dialog.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	dialog.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var popup_layer: CanvasLayer = $PopupLayer
+	popup_layer.add_child(dialog)
+	dialog.factory_ordered.connect(_on_factory_ordered)
+	dialog.loan_requested.connect(_on_factory_loan_requested)
+	dialog.discount_confirmed.connect(_on_factory_discount_confirmed)
+	_factory_dialog = dialog
+
+
 # ── Helpers ──
 
 static func _make_spacer() -> Control:
@@ -239,7 +260,6 @@ static func _make_spacer() -> Control:
 
 func _log(msg: String) -> void:
 	_msg_log.text += msg + "\n"
-	# 自动滚动到底部
 	_msg_log.scroll_to_line(_msg_log.get_line_count() - 1)
 
 
@@ -303,13 +323,14 @@ func _update_ui() -> void:
 	_cash_label.text = " 💰 %dM" % gs.get("cash", 0)
 	_phase_label.text = " 阶段 %d" % gs.get("phase", 1)
 
-	# 刷新生产线视窗
 	if _production_view:
 		_production_view.update(gs.get("factories", []))
 
-	# 刷新库存看板
 	if _inventory_dashboard:
 		_inventory_dashboard.update(gs)
+
+	if _market_panel:
+		_market_panel.update(gs.get("markets", []))
 
 
 func _show_decision(data: Dictionary) -> void:
@@ -355,13 +376,8 @@ func _on_action_clicked() -> void:
 
 
 func _on_discount_clicked() -> void:
-	var ar: Array = _game_state.get("accounts_receivable", [])
-	if ar.is_empty():
-		_log("[color=red]没有应收款可贴现[/color]")
-		return
-	var amount: int = ar[0].get("amount", 0)
-	_log("[color=yellow]💰 贴现 %dM 应收款...[/color]" % amount)
-	_ws_manager.send_action({"action": "discount_receivable", "amount": amount})
+	if _factory_dialog:
+		_factory_dialog.show_dialog(_game_state)
 
 
 func _on_order_meeting_confirmed(selected_ids: Array) -> void:
@@ -375,5 +391,51 @@ func _on_order_meeting_confirmed(selected_ids: Array) -> void:
 
 
 func _on_loan_clicked() -> void:
-	_log("[color=yellow]🏦 申请短期贷款 20M...[/color]")
-	_ws_manager.send_action({"action": "take_loan", "loan_type": "short", "amount": 20})
+	if _factory_dialog:
+		_factory_dialog.show_dialog(_game_state)
+
+
+# ── Factory Dialog Handlers ──
+
+func _on_factory_ordered(line_type: String) -> void:
+	var type_label: String = "手工线"
+	match line_type:
+		"semi_auto":
+			type_label = "半自动"
+		"auto":
+			type_label = "全自动"
+	_log("[color=green]🔧 订购新产线: %s[/color]" % type_label)
+	_ws_manager.send_action({
+		"action": "order_production_line",
+		"line_type": line_type
+	})
+
+
+func _on_factory_loan_requested(loan_type: String, amount: int) -> void:
+	var type_label: String = "短期" if loan_type == "short" else "长期"
+	_log("[color=yellow]🏦 申请%s贷款 %dM...[/color]" % [type_label, amount])
+	_ws_manager.send_action({
+		"action": "take_loan",
+		"loan_type": loan_type,
+		"amount": amount
+	})
+
+
+func _on_factory_discount_confirmed(amount: int) -> void:
+	_log("[color=yellow]💰 贴现 %dM 应收款...[/color]" % amount)
+	_ws_manager.send_action({
+		"action": "discount_receivable",
+		"amount": amount
+	})
+
+
+func _on_market_panel_submit(strategies: Array) -> void:
+	if strategies.is_empty():
+		return
+	_log("[color=green]📋 提交竞标策略: %d 个市场[/color]" % strategies.size())
+	_ws_manager.send_action({
+		"action": "submit_bidding",
+		"strategies": strategies
+	})
+	_action_btn.text = "▶ 执行下一季度"
+	_action_btn.disabled = false
