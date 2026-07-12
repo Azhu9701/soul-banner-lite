@@ -1,3 +1,4 @@
+pub mod ai_competitor;
 pub mod engine;
 pub mod errors;
 pub mod finance;
