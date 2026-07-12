@@ -26,6 +26,7 @@ const BOTTOM_HEIGHT: float = 40.0
 var _game_state: Dictionary = {}
 var _decision_type: String = ""
 var _production_view: ProductionView
+var _inventory_dashboard: InventoryDashboard
 
 # Lazy-init UI nodes (created in _build_ui)
 var _year_label: Label
@@ -58,6 +59,7 @@ func _build_ui() -> void:
 	_build_message_log()
 	_build_bottom_bar()
 	_build_production_view()
+	_build_inventory_dashboard()
 	_build_popup()
 
 
@@ -136,6 +138,20 @@ func _build_production_view() -> void:
 	prod_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_production_area.add_child(prod_view)
 	_production_view = prod_view
+
+
+func _build_inventory_dashboard() -> void:
+	# 右侧库存看板面板
+	var panel := Panel.new()
+	panel.position = Vector2(470.0, 56.0)
+	panel.size = Vector2(310.0, 380.0)
+	add_child(panel)
+
+	_inventory_dashboard = InventoryDashboard.new()
+	_inventory_dashboard.name = "InventoryDashboard"
+	_inventory_dashboard.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_inventory_dashboard.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	panel.add_child(_inventory_dashboard)
 
 
 func _build_popup() -> void:
@@ -244,6 +260,10 @@ func _update_ui() -> void:
 	# 刷新生产线视窗
 	if _production_view:
 		_production_view.update(gs.get("factories", []))
+
+	# 刷新库存看板
+	if _inventory_dashboard:
+		_inventory_dashboard.update(gs)
 
 
 func _show_decision(data: Dictionary) -> void:
