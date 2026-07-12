@@ -1,68 +1,282 @@
 extends Control
-## 主游戏场景，管理顶部状态栏/中部产线/底部面板/弹窗系统
+## 创业沙盘主游戏场景——管理 UI 布局、决策弹窗和服务端通信。
+##
+## 生命周期：
+## 1. _ready() 构建 UI → 连接 WS → 发送 start_game
+## 2. 服务端推送 state_update → _update_ui() 刷新
+## 3. 服务端推送 ask_decision → 弹出决策面板
+## 4. 用户决策 → send_action() → 下一轮
 
-@onready var top_bar: Control = $TopBar
-@onready var production_area: Control = $ProductionArea
-@onready var bottom_panel: Control = $BottomPanel
-@onready var popup_layer: Control = $PopupLayer
-@onready var ws_manager: Node = $/root/WebSocketManager
+class_name MainGame
 
-var game_state: Dictionary = {}
+# ── Constants ──
+
+const INITIAL_WINDOW_SIZE: Vector2 = Vector2(800, 600)
+const PANEL_MARGIN: float = 10.0
+const LOG_HEIGHT: float = 380.0
+const BOTTOM_HEIGHT: float = 40.0
+
+# ── @onready Vars ──
+
+@onready var _ws_manager: Node = $/root/WebSocketManager
+
+# ── Private Vars ──
+
+var _game_state: Dictionary = {}
+var _decision_type: String = ""
+
+# Lazy-init UI nodes (created in _build_ui)
+var _year_label: Label
+var _quarter_label: Label
+var _cash_label: Label
+var _phase_label: Label
+var _msg_log: RichTextLabel
+var _action_btn: Button
+var _popup_panel: Panel
+var _popup_title: Label
+var _popup_input: LineEdit
+var _popup_btn: Button
+
+
+# ── Virtual Methods ──
 
 func _ready() -> void:
-	ws_manager.message_received.connect(_on_ws_message)
-	ws_manager.connected.connect(_on_ws_connected)
-	# 连接到游戏服务器
-	ws_manager.connect_to_server("game_001")
+	custom_minimum_size = INITIAL_WINDOW_SIZE
+	_build_ui()
+	_ws_manager.message_received.connect(_on_message_received)
+	_ws_manager.connected.connect(_on_ws_connected)
+	_ws_manager.connection_failed.connect(_on_ws_failed)
+	_ws_manager.connect_to_server("game_001")
+
+
+# ── UI Building ──
+
+func _build_ui() -> void:
+	_build_top_bar()
+	_build_message_log()
+	_build_bottom_bar()
+	_build_popup()
+
+
+func _build_top_bar() -> void:
+	var hb := HBoxContainer.new()
+	hb.position = Vector2(PANEL_MARGIN, PANEL_MARGIN)
+	hb.size = Vector2(780, 36)
+	add_child(hb)
+
+	var title := Label.new()
+	title.text = "🏢 创业沙盘"
+	title.add_theme_font_size_override("font_size", 18)
+	hb.add_child(title)
+
+	hb.add_child(_make_spacer())
+
+	_year_label = Label.new()
+	_year_label.text = "📅 第 1 年"
+	hb.add_child(_year_label)
+
+	_quarter_label = Label.new()
+	_quarter_label.text = " 第 1 季度"
+	hb.add_child(_quarter_label)
+
+	_cash_label = Label.new()
+	_cash_label.text = " 💰 12M"
+	hb.add_child(_cash_label)
+
+	_phase_label = Label.new()
+	_phase_label.text = " 阶段 1"
+	hb.add_child(_phase_label)
+
+
+func _build_message_log() -> void:
+	_msg_log = RichTextLabel.new()
+	_msg_log.position = Vector2(PANEL_MARGIN, 56.0)
+	_msg_log.size = Vector2(780.0, LOG_HEIGHT)
+	_msg_log.bbcode_enabled = true
+	_msg_log.scroll_active = true
+	_msg_log.text = "[b]欢迎来到创业沙盘！[/b]\n正在连接服务器...\n"
+	add_child(_msg_log)
+
+
+func _build_bottom_bar() -> void:
+	var hb := HBoxContainer.new()
+	hb.position = Vector2(PANEL_MARGIN, 56.0 + LOG_HEIGHT + PANEL_MARGIN)
+	hb.size = Vector2(780.0, BOTTOM_HEIGHT)
+	add_child(hb)
+
+	_action_btn = Button.new()
+	_action_btn.text = "等待服务器..."
+	_action_btn.disabled = true
+	_action_btn.pressed.connect(_on_action_clicked)
+	hb.add_child(_action_btn)
+
+	var discount_btn := Button.new()
+	discount_btn.text = "💳 贴现"
+	discount_btn.pressed.connect(_on_discount_clicked)
+	hb.add_child(discount_btn)
+
+	var loan_btn := Button.new()
+	loan_btn.text = "🏦 贷款 20M"
+	loan_btn.pressed.connect(_on_loan_clicked)
+	hb.add_child(loan_btn)
+
+
+func _build_popup() -> void:
+	_popup_panel = Panel.new()
+	_popup_panel.position = Vector2(150.0, 100.0)
+	_popup_panel.size = Vector2(500.0, 200.0)
+	_popup_panel.visible = false
+	add_child(_popup_panel)
+
+	_popup_title = Label.new()
+	_popup_title.position = Vector2(20.0, 20.0)
+	_popup_title.size = Vector2(460.0, 30.0)
+	_popup_title.add_theme_font_size_override("font_size", 16)
+	_popup_panel.add_child(_popup_title)
+
+	var desc := Label.new()
+	desc.position = Vector2(20.0, 55.0)
+	desc.size = Vector2(460.0, 20.0)
+	desc.text = "输入营销投入金额（M），决定能激活多少张订单："
+	_popup_panel.add_child(desc)
+
+	_popup_input = LineEdit.new()
+	_popup_input.position = Vector2(20.0, 80.0)
+	_popup_input.size = Vector2(200.0, 30.0)
+	_popup_input.placeholder_text = "例如: 2"
+	_popup_input.text = "2"
+	_popup_panel.add_child(_popup_input)
+
+	_popup_btn = Button.new()
+	_popup_btn.position = Vector2(20.0, 120.0)
+	_popup_btn.size = Vector2(120.0, 30.0)
+	_popup_btn.text = "✅ 提交"
+	_popup_btn.pressed.connect(_on_popup_confirmed)
+	_popup_panel.add_child(_popup_btn)
+
+	var cancel_btn := Button.new()
+	cancel_btn.position = Vector2(150.0, 120.0)
+	cancel_btn.size = Vector2(80.0, 30.0)
+	cancel_btn.text = "取消"
+	cancel_btn.pressed.connect(_hide_popup)
+	_popup_panel.add_child(cancel_btn)
+
+
+# ── Helpers ──
+
+static func _make_spacer() -> Control:
+	var s := Control.new()
+	s.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	return s
+
+
+func _log(msg: String) -> void:
+	_msg_log.text += msg + "\n"
+	# 自动滚动到底部
+	_msg_log.scroll_to_line(_msg_log.get_line_count() - 1)
+
+
+func _hide_popup() -> void:
+	_popup_panel.visible = false
+
+
+# ── WS Callbacks ──
 
 func _on_ws_connected() -> void:
-	print("已连接到游戏服务器")
-	# 发送开始游戏指令
-	ws_manager.send_action({"action": "start_game"})
+	_log("[color=green]✅ 已连接到游戏服务器[/color]")
+	_ws_manager.send_action({"action": "start_game"})
 
-func _on_ws_message(data: Dictionary) -> void:
+
+func _on_ws_failed() -> void:
+	_log("[color=red]❌ 无法连接到游戏服务器\n请确认 Rust API 已在 localhost:3096 运行[/color]")
+
+
+func _on_message_received(data: Dictionary) -> void:
 	var event_type: String = data.get("event", "")
 	match event_type:
 		"state_update":
-			game_state = data.get("data", {})
+			_game_state = data.get("data", {})
 			_update_ui()
 		"ask_decision":
-			_show_decision_prompt(data.get("data", {}))
+			_show_decision(data.get("data", {}))
 		"message":
-			_show_message(data.get("data", ""))
+			_log("[color=yellow]📢 %s[/color]" % data.get("data", ""))
 		"game_over":
-			_show_game_over(data.get("data", {}).get("reason", "未知原因"))
-		"annual_report":
-			_show_annual_report(data.get("data", {}))
+			var reason: String = data.get("data", {}).get("reason", "未知原因")
+			_log("[color=red]💀 游戏结束: %s[/color]" % reason)
+			_action_btn.disabled = true
+			_action_btn.text = "游戏结束"
 		"phase_change":
-			_update_phase_display(data.get("data", {}))
+			var pd: Dictionary = data.get("data", {})
+			_log("[color=cyan]📅 第 %d 年第 %d 季度 — %s[/color]" % [
+				pd.get("year", 1), pd.get("quarter", 0), pd.get("phase", "")
+			])
+		"annual_report":
+			_log("[color=green]📊 收到年度报告[/color]")
+
+
+# ── UI Updates ──
 
 func _update_ui() -> void:
-	top_bar.update(
-		game_state.get("game_year", 1),
-		game_state.get("game_quarter", 1),
-		game_state.get("cash", 0)
-	)
-	production_area.update(game_state.get("factories", []))
-	bottom_panel.update(game_state)
+	var gs: Dictionary = _game_state
+	_year_label.text = "📅 第 %d 年" % gs.get("game_year", 1)
+	_quarter_label.text = " 第 %d 季度" % gs.get("game_quarter", 1)
+	_cash_label.text = " 💰 %dM" % gs.get("cash", 0)
+	_phase_label.text = " 阶段 %d" % gs.get("phase", 1)
 
-func _show_decision_prompt(data: Dictionary) -> void:
-	var decision_type: String = data.get("decision_type", "")
-	if decision_type == "bidding":
-		_open_bidding_dialog()
 
-func _open_bidding_dialog() -> void:
-	# 占位：后面实现竞标弹窗
-	print("打开竞标策略弹窗")
+func _show_decision(data: Dictionary) -> void:
+	_decision_type = data.get("decision_type", "")
+	_popup_title.text = "📋 %s" % _decision_type
 
-func _show_message(text: String) -> void:
-	print("系统消息: ", text)
+	match _decision_type:
+		"bidding":
+			_popup_input.placeholder_text = "输入营销投入 M"
+			_popup_input.text = "2"
+			_popup_btn.text = "✅ 提交竞标"
+		_:
+			_popup_input.placeholder_text = "输入..."
+			_popup_btn.text = "确认"
 
-func _show_game_over(reason: String) -> void:
-	print("游戏结束: ", reason)
+	_popup_panel.visible = true
 
-func _show_annual_report(report: Dictionary) -> void:
-	print("年度报告: ", report)
 
-func _update_phase_display(data: Dictionary) -> void:
-	pass
+# ── Button Handlers ──
+
+func _on_popup_confirmed() -> void:
+	var input_val: String = _popup_input.text.strip_edges()
+	_hide_popup()
+
+	match _decision_type:
+		"bidding":
+			var spend: int = int(input_val) if input_val.is_valid_int() else 2
+			_log("[color=green]📋 提交竞标: 营销投入 %dM[/color]" % spend)
+			_ws_manager.send_action({
+				"action": "submit_bidding",
+				"strategies": [{"market_name": "平城", "marketing_spend": spend}]
+			})
+			_action_btn.text = "▶ 执行下一季度"
+			_action_btn.disabled = false
+	_popup_input.text = ""
+
+
+func _on_action_clicked() -> void:
+	_action_btn.disabled = true
+	_action_btn.text = "执行中..."
+	_log("[color=cyan]▶ 执行下一季度...[/color]")
+	_ws_manager.send_action({"action": "next_quarter"})
+
+
+func _on_discount_clicked() -> void:
+	var ar: Array = _game_state.get("accounts_receivable", [])
+	if ar.is_empty():
+		_log("[color=red]没有应收款可贴现[/color]")
+		return
+	var amount: int = ar[0].get("amount", 0)
+	_log("[color=yellow]💰 贴现 %dM 应收款...[/color]" % amount)
+	_ws_manager.send_action({"action": "discount_receivable", "amount": amount})
+
+
+func _on_loan_clicked() -> void:
+	_log("[color=yellow]🏦 申请短期贷款 20M...[/color]")
+	_ws_manager.send_action({"action": "take_loan", "loan_type": "short", "amount": 20})
