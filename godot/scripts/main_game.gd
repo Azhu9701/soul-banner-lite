@@ -1,441 +1,392 @@
 extends Control
-## 创业沙盘主游戏场景——管理 UI 布局、决策弹窗和服务端通信。
-##
-## 生命周期：
-## 1. _ready() 构建 UI → 连接 WS → 发送 start_game
-## 2. 服务端推送 state_update → _update_ui() 刷新
-## 3. 服务端推送 ask_decision → 弹出决策面板
-## 4. 用户决策 → send_action() → 下一轮
-
 class_name MainGame
 
-# ── Preloads ──
+const T = preload("res://scripts/theme.gd")
+const AnnualReportPopupScript = preload("res://scripts/popups/annual_report_popup.gd")
+const OrderMeetingPopupScript = preload("res://scripts/popups/order_meeting_popup.gd")
+const FactoryDialogScript = preload("res://scripts/popups/factory_dialog.gd")
 
-const AnnualReportPopupScript := preload("res://scripts/popups/annual_report_popup.gd")
-const OrderMeetingPopupScript := preload("res://scripts/popups/order_meeting_popup.gd")
-const MarketPanelScript := preload("res://scripts/market_panel.gd")
-const FactoryDialogScript := preload("res://scripts/popups/factory_dialog.gd")
+@onready var _ws: Node = $/root/WebSocketManager
 
-
-# ── Constants ──
-
-const INITIAL_WINDOW_SIZE: Vector2 = Vector2(800, 600)
-const PANEL_MARGIN: float = 10.0
-const LOG_HEIGHT: float = 380.0
-const BOTTOM_HEIGHT: float = 40.0
-
-# ── @onready Vars ──
-
-@onready var _ws_manager: Node = $/root/WebSocketManager
-@onready var _production_area: VBoxContainer = $ProductionArea
-
-# ── Private Vars ──
-
-var _game_state: Dictionary = {}
+# ── Core state ──
+var _state: Dictionary = {}
 var _decision_type: String = ""
-var _production_view: ProductionView
-var _inventory_dashboard: InventoryDashboard
-var _market_panel: Variant
 
-# Lazy-init UI nodes (created in _build_ui)
-var _year_label: Label
-var _quarter_label: Label
-var _cash_label: Label
-var _phase_label: Label
-var _msg_log: RichTextLabel
+# ── Top bar widgets ──
+var _year_lbl: Label
+var _quarter_lbl: Label
+var _cash_lbl: Label
+var _asset_lbl: Label
+var _rank_lbl: Label
+var _phase_lbl: Label
+var _phase_lbl2: Label
+
+# ── Center widgets ──
+var _prod_view: ProductionView
+var _inv_dashboard: InventoryDashboard
+var _market_container: VBoxContainer
+var _rd_container: VBoxContainer
+var _loan_container: VBoxContainer
+
+# ── Action button ──
 var _action_btn: Button
-var _popup_panel: Panel
-var _popup_title: Label
-var _popup_input: LineEdit
-var _popup_btn: Button
-var _annual_report_popup: Variant
-var _order_meeting_popup: Variant
+
+# ── Popups (stored for later show/hide) ──
+var _bid_popup: Panel
+var _bid_input: LineEdit
+var _bid_confirm: Button
+var _annual_popup: Variant
+var _order_popup: Variant
 var _factory_dialog: Variant
 
 
-# ── Virtual Methods ──
+# ═══════════════ _ready ═══════════════
 
 func _ready() -> void:
-	custom_minimum_size = INITIAL_WINDOW_SIZE
-	_build_ui()
-	_ws_manager.message_received.connect(_on_message_received)
-	_ws_manager.connected.connect(_on_ws_connected)
-	_ws_manager.connection_failed.connect(_on_ws_failed)
-	_ws_manager.connect_to_server("game_001")
+	custom_minimum_size = Vector2(960, 640)
+	_ws.message_received.connect(_on_msg)
+	_ws.connected.connect(func(): _ws.send_action({"action": "start_game"}))
+	_build_layout()
+	_ws.connect_to_server("game_001")
 
 
-# ── UI Building ──
+# ═══════════════ LAYOUT BUILD ═══════════════
 
-func _build_ui() -> void:
-	_build_top_bar()
-	_build_message_log()
-	_build_bottom_bar()
-	_build_market_panel()
-	_build_production_view()
-	_build_inventory_dashboard()
-	_build_popup()
-	_build_annual_report_popup()
-	_build_order_meeting_popup()
-	_build_factory_dialog()
+func _build_layout() -> void:
+	_build_topbar()
+	_build_body()
+	_build_bottombar()
+	_build_bid_popup()
 
 
-func _build_top_bar() -> void:
-	var hb := HBoxContainer.new()
-	hb.position = Vector2(PANEL_MARGIN, PANEL_MARGIN)
-	hb.size = Vector2(780, 36)
-	add_child(hb)
+# ── TOP BAR (960x44 + 3px brand line) ──
 
-	var title := Label.new()
-	title.text = "🏢 创业沙盘"
-	title.add_theme_font_size_override("font_size", 18)
-	hb.add_child(title)
+func _build_topbar() -> void:
+	var bar := _hbox(Vector2(0, 0), Vector2(960, 44), T.colors.white)
+	add_child(bar)
 
-	hb.add_child(_make_spacer())
+	var logo := _label("🏢 创业沙盘", T.h1, T.colors.text_strong)
+	bar.add_child(logo); bar.add_child(_sep())
 
-	_year_label = Label.new()
-	_year_label.text = "📅 第 1 年"
-	hb.add_child(_year_label)
+	_year_lbl = _add(bar, "📅 第 1 年")
+	_quarter_lbl = _add(bar, "Q1")
+	_asset_lbl = _add(bar, "📊 资产 70M")
 
-	_quarter_label = Label.new()
-	_quarter_label.text = " 第 1 季度"
-	hb.add_child(_quarter_label)
+	var g := _gap(); bar.add_child(g)
 
-	_cash_label = Label.new()
-	_cash_label.text = " 💰 12M"
-	hb.add_child(_cash_label)
+	_rank_lbl = _add(bar, "🏆 排名 #1")
+	_rank_lbl.add_theme_color_override("font_color", T.colors.text_medium)
 
-	_phase_label = Label.new()
-	_phase_label.text = " 阶段 1"
-	hb.add_child(_phase_label)
+	_cash_lbl = _add(bar, "💰 12M")
+	_cash_lbl.add_theme_color_override("font_color", T.colors.white)
+	var bg := _flat_bg(T.colors.brand, 14)
+	bg.content_margin_left = 14; bg.content_margin_right = 14
+	bg.content_margin_top = 5; bg.content_margin_bottom = 5
+	_cash_lbl.add_theme_stylebox_override("normal", bg)
 
-
-func _build_message_log() -> void:
-	_msg_log = RichTextLabel.new()
-	_msg_log.position = Vector2(PANEL_MARGIN, 56.0)
-	_msg_log.size = Vector2(780.0, LOG_HEIGHT)
-	_msg_log.bbcode_enabled = true
-	_msg_log.scroll_active = true
-	_msg_log.text = "[b]欢迎来到创业沙盘！[/b]\n正在连接服务器...\n"
-	add_child(_msg_log)
+	var line := ColorRect.new(); line.color = T.colors.brand
+	line.position = Vector2(0, 44); line.size = Vector2(960, 3)
+	add_child(line)
 
 
-func _build_bottom_bar() -> void:
-	var hb := HBoxContainer.new()
-	hb.position = Vector2(PANEL_MARGIN, 56.0 + LOG_HEIGHT + PANEL_MARGIN)
-	hb.size = Vector2(780.0, BOTTOM_HEIGHT)
-	add_child(hb)
+# ── BODY (960x546) — three columns ──
 
-	_action_btn = Button.new()
-	_action_btn.text = "等待服务器..."
-	_action_btn.disabled = true
-	_action_btn.pressed.connect(_on_action_clicked)
-	hb.add_child(_action_btn)
+func _build_body() -> void:
+	var row := _hbox(Vector2(0, 47), Vector2(960, 542), T.colors.bg)
+	add_child(row)
 
-	var discount_btn := Button.new()
-	discount_btn.text = "💳 贴现"
-	discount_btn.pressed.connect(_on_discount_clicked)
-	hb.add_child(discount_btn)
-
-	var loan_btn := Button.new()
-	loan_btn.text = "🏦 贷款 20M"
-	loan_btn.pressed.connect(_on_loan_clicked)
-	hb.add_child(loan_btn)
+	row.add_child(_build_left())
+	row.add_child(_vline())
+	row.add_child(_build_center())
+	row.add_child(_vline())
+	row.add_child(_build_right())
 
 
-func _build_production_view() -> void:
-	var prod_view := ProductionView.new()
-	prod_view.name = "ProductionView"
-	prod_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	prod_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	_production_area.add_child(prod_view)
-	_production_view = prod_view
+func _build_left() -> Control:
+	var c := VBoxContainer.new()
+	c.custom_minimum_size = Vector2(200, 0)
+	c.add_theme_color_override("background_color", T.colors.white)
+	c.add_theme_constant_override("margin_left", 14)
+	c.add_theme_constant_override("margin_top", 14)
+	c.add_theme_constant_override("margin_right", 14)
+
+	c.add_child(_section_head("📈 市场"))
+	_market_container = VBoxContainer.new()
+	c.add_child(_market_container)
+
+	c.add_child(_spacer(12))
+	c.add_child(_section_head("💳 贷款"))
+	_loan_container = VBoxContainer.new()
+	c.add_child(_loan_container)
+
+	# marketing input row
+	c.add_child(_spacer(14))
+	var row := HBoxContainer.new()
+	c.add_child(row)
+	var inp := LineEdit.new(); inp.placeholder_text = "营销投入 M"; inp.text = "2"
+	inp.custom_minimum_size = Vector2(60, 30); row.add_child(inp)
+	_bid_input = inp
+	var btn := _btn("提交竞标", T.colors.brand, T.colors.white); btn.pressed.connect(_on_bid_ok)
+	btn.custom_minimum_size = Vector2(80, 30); row.add_child(btn)
+
+	return c
 
 
-func _build_inventory_dashboard() -> void:
-	var panel := Panel.new()
-	panel.position = Vector2(470.0, 56.0)
-	panel.size = Vector2(310.0, 380.0)
-	add_child(panel)
+func _build_center() -> Control:
+	var c := VBoxContainer.new()
+	c.size_flags_horizontal = SIZE_EXPAND_FILL
+	c.add_theme_constant_override("separation", 12)
+	c.add_theme_constant_override("margin_left", 16)
+	c.add_theme_constant_override("margin_right", 16)
+	c.add_theme_constant_override("margin_top", 14)
+	c.add_theme_constant_override("margin_bottom", 14)
 
-	_inventory_dashboard = InventoryDashboard.new()
-	_inventory_dashboard.name = "InventoryDashboard"
-	_inventory_dashboard.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_inventory_dashboard.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	panel.add_child(_inventory_dashboard)
+	# Factory card
+	var fc := Panel.new(); fc.add_theme_stylebox_override("panel", _card_bg())
+	fc.size_flags_horizontal = SIZE_EXPAND_FILL; fc.size_flags_vertical = SIZE_EXPAND_FILL
+	c.add_child(fc)
 
+	var fv := VBoxContainer.new()
+	fv.add_theme_constant_override("margin_left", 16); fv.add_theme_constant_override("margin_top", 14)
+	fc.add_child(fv)
+	fv.add_child(_section_head("🏭 老工厂 (4条产线)"))
+	_prod_view = ProductionView.new()
+	fv.add_child(_prod_view)
 
-func _build_market_panel() -> void:
-	_market_panel = MarketPanelScript.new()
-	_market_panel.name = "MarketPanel"
-	_market_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_market_panel.submit_bidding.connect(_on_market_panel_submit)
-	_production_area.add_child(_market_panel)
+	# Financial report card
+	var rc := Panel.new(); rc.add_theme_stylebox_override("panel", _card_bg())
+	rc.size_flags_horizontal = SIZE_EXPAND_FILL; rc.size_flags_vertical = SIZE_EXPAND_FILL
+	c.add_child(rc)
+	var rv := VBoxContainer.new()
+	rv.add_theme_constant_override("margin_left", 16); rv.add_theme_constant_override("margin_top", 14)
+	rc.add_child(rv)
+	rv.add_child(_section_head("📦 库存"))
+	_inv_dashboard = InventoryDashboard.new()
+	rv.add_child(_inv_dashboard)
 
-
-func _build_popup() -> void:
-	_popup_panel = Panel.new()
-	_popup_panel.position = Vector2(150.0, 100.0)
-	_popup_panel.size = Vector2(500.0, 200.0)
-	_popup_panel.visible = false
-	add_child(_popup_panel)
-
-	_popup_title = Label.new()
-	_popup_title.position = Vector2(20.0, 20.0)
-	_popup_title.size = Vector2(460.0, 30.0)
-	_popup_title.add_theme_font_size_override("font_size", 16)
-	_popup_panel.add_child(_popup_title)
-
-	var desc := Label.new()
-	desc.position = Vector2(20.0, 55.0)
-	desc.size = Vector2(460.0, 20.0)
-	desc.text = "输入营销投入金额（M），决定能激活多少张订单："
-	_popup_panel.add_child(desc)
-
-	_popup_input = LineEdit.new()
-	_popup_input.position = Vector2(20.0, 80.0)
-	_popup_input.size = Vector2(200.0, 30.0)
-	_popup_input.placeholder_text = "例如: 2"
-	_popup_input.text = "2"
-	_popup_panel.add_child(_popup_input)
-
-	_popup_btn = Button.new()
-	_popup_btn.position = Vector2(20.0, 120.0)
-	_popup_btn.size = Vector2(120.0, 30.0)
-	_popup_btn.text = "✅ 提交"
-	_popup_btn.pressed.connect(_on_popup_confirmed)
-	_popup_panel.add_child(_popup_btn)
-
-	var cancel_btn := Button.new()
-	cancel_btn.position = Vector2(150.0, 120.0)
-	cancel_btn.size = Vector2(80.0, 30.0)
-	cancel_btn.text = "取消"
-	cancel_btn.pressed.connect(_hide_popup)
-	_popup_panel.add_child(cancel_btn)
+	return c
 
 
-func _build_annual_report_popup() -> void:
-	var popup: Variant = AnnualReportPopupScript.new()
-	popup.name = "AnnualReportPopup"
-	popup.visible = false
-	popup.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	popup.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var popup_layer: CanvasLayer = $PopupLayer
-	popup_layer.add_child(popup)
-	_annual_report_popup = popup
+func _build_right() -> Control:
+	var c := VBoxContainer.new()
+	c.custom_minimum_size = Vector2(200, 0)
+	c.add_theme_color_override("background_color", T.colors.white)
+	c.add_theme_constant_override("margin_left", 14)
+	c.add_theme_constant_override("margin_top", 14)
+	c.add_theme_constant_override("margin_right", 14)
+
+	c.add_child(_section_head("🔬 研发"))
+	_rd_container = VBoxContainer.new()
+	c.add_child(_rd_container)
+
+	c.add_child(_spacer(12))
+	c.add_child(_section_head("🤖 AI 对手"))
+	# Placeholder info until real AI data comes
+	c.add_child(_label("CEO    · 激进", T.small, T.colors.text_medium))
+	c.add_child(_label("CFO    · 稳健", T.small, T.colors.text_medium))
+	c.add_child(_label("COO    · 激进", T.small, T.colors.text_medium))
+	c.add_child(_label("CMO    · 待定", T.small, T.colors.text_muted))
+
+	return c
 
 
-func _build_order_meeting_popup() -> void:
-	var popup: Variant = OrderMeetingPopupScript.new()
-	popup.name = "OrderMeetingPopup"
-	popup.visible = false
-	popup.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	popup.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var popup_layer: CanvasLayer = $PopupLayer
-	popup_layer.add_child(popup)
-	popup.orders_confirmed.connect(_on_order_meeting_confirmed)
-	_order_meeting_popup = popup
+# ── BOTTOM BAR ──
+
+func _build_bottombar() -> void:
+	var bar := _hbox(Vector2(0, 589), Vector2(960, 51), T.colors.white)
+	add_child(bar)
+
+	var line := ColorRect.new(); line.color = T.colors.brand
+	line.position = Vector2(0, 589); line.size = Vector2(960, 3)
+	add_child(line)
+
+	_action_btn = _btn("等待服务器...", T.colors.brand, T.colors.white)
+	_action_btn.disabled = true; _action_btn.pressed.connect(_on_next_quarter)
+	bar.add_child(_action_btn)
+
+	bar.add_child(_btn_light("📊 年报")).pressed.connect(func():
+		if _annual_popup: _annual_popup.show_report(_state))
+	bar.add_child(_btn_light("📋 订货会"))
+	bar.add_child(_btn_light("🏗️ 工厂")).pressed.connect(func():
+		if _factory_dialog: _factory_dialog.show_dialog(_state))
+
+	var g := _gap(); bar.add_child(g)
+
+	_phase_lbl2 = _label("", T.small, T.colors.text_muted)
+	bar.add_child(_phase_lbl2)
 
 
-func _build_factory_dialog() -> void:
-	var dialog: Variant = FactoryDialogScript.new()
-	dialog.name = "FactoryDialog"
-	dialog.visible = false
-	dialog.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	dialog.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	var popup_layer: CanvasLayer = $PopupLayer
-	popup_layer.add_child(dialog)
-	dialog.factory_ordered.connect(_on_factory_ordered)
-	dialog.loan_requested.connect(_on_factory_loan_requested)
-	dialog.discount_confirmed.connect(_on_factory_discount_confirmed)
-	_factory_dialog = dialog
+# ── BID POPUP ──
+
+func _build_bid_popup() -> void:
+	_bid_popup = Panel.new()
+	_bid_popup.position = Vector2(230, 180); _bid_popup.size = Vector2(500, 180)
+	_bid_popup.add_theme_stylebox_override("panel", _card_bg())
+	_bid_popup.visible = false
+	add_child(_bid_popup)
+
+	var t := _label("📋 营销竞标", T.h1, T.colors.text_strong)
+	t.position = Vector2(20, 20); _bid_popup.add_child(t)
+
+	_bid_input = LineEdit.new()
+	_bid_input.position = Vector2(20, 60); _bid_input.size = Vector2(180, 32)
+	_bid_input.text = "2"
+	_bid_popup.add_child(_bid_input)
+
+	_bid_confirm = _btn("✅ 提交竞标", T.colors.brand, T.colors.white)
+	_bid_confirm.position = Vector2(20, 110); _bid_confirm.pressed.connect(_on_bid_ok)
+	_bid_popup.add_child(_bid_confirm)
+
+	var cancel := _btn_light("取消"); cancel.position = Vector2(130, 110)
+	cancel.pressed.connect(func(): _bid_popup.visible = false)
+	_bid_popup.add_child(cancel)
+
+	# Also init other popups into popup layer
+	if has_node("PopupLayer"):
+		_annual_popup = AnnualReportPopupScript.new(); _annual_popup.visible = false
+		$PopupLayer.add_child(_annual_popup)
+		_order_popup = OrderMeetingPopupScript.new(); _order_popup.visible = false
+		$PopupLayer.add_child(_order_popup)
+		_factory_dialog = FactoryDialogScript.new(); _factory_dialog.visible = false
+		$PopupLayer.add_child(_factory_dialog)
+		_factory_dialog.factory_ordered.connect(func(lt): _ws.send_action({"action": "order_production_line","line_type": lt}))
+		_factory_dialog.loan_requested.connect(func(lt, amt): _ws.send_action({"action":"take_loan","loan_type":lt,"amount":amt}))
+		_factory_dialog.discount_confirmed.connect(func(amt): _ws.send_action({"action":"discount_receivable","amount":amt}))
 
 
-# ── Helpers ──
+# ═══════════════ WS HANDLERS ═══════════════
 
-static func _make_spacer() -> Control:
-	var s := Control.new()
-	s.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	return s
-
-
-func _log(msg: String) -> void:
-	_msg_log.text += msg + "\n"
-	_msg_log.scroll_to_line(_msg_log.get_line_count() - 1)
-
-
-func _hide_popup() -> void:
-	_popup_panel.visible = false
-
-
-# ── WS Callbacks ──
-
-func _on_ws_connected() -> void:
-	_log("[color=green]✅ 已连接到游戏服务器[/color]")
-	_ws_manager.send_action({"action": "start_game"})
-
-
-func _on_ws_failed() -> void:
-	_log("[color=red]❌ 无法连接到游戏服务器\n请确认 Rust API 已在 localhost:3096 运行[/color]")
-
-
-func _on_message_received(data: Dictionary) -> void:
-	var event_type: String = data.get("event", "")
-	match event_type:
+func _on_msg(data: Dictionary) -> void:
+	match data.get("event", ""):
 		"state_update":
-			_game_state = data.get("data", {})
-			_update_ui()
+			_state = data.get("data", {}); _update_ui()
 		"ask_decision":
-			_show_decision(data.get("data", {}))
+			_bid_popup.visible = true
 		"message":
-			_log("[color=yellow]📢 %s[/color]" % data.get("data", ""))
+			print("📢 ", data.get("data", ""))
 		"game_over":
-			var reason: String = data.get("data", {}).get("reason", "未知原因")
-			_log("[color=red]💀 游戏结束: %s[/color]" % reason)
-			_action_btn.disabled = true
-			_action_btn.text = "游戏结束"
+			print("💀 游戏结束: ", data.get("data", {}).get("reason", ""))
+			_action_btn.disabled = true; _action_btn.text = "游戏结束"
 		"phase_change":
-			var pd: Dictionary = data.get("data", {})
-			_log("[color=cyan]📅 第 %d 年第 %d 季度 — %s[/color]" % [
-				pd.get("year", 1), pd.get("quarter", 0), pd.get("phase", "")
-			])
+			print("📅 ", data.get("data", {}).get("phase", ""))
 		"annual_report":
-			var report_data: Dictionary = data.get("data", {})
-			_log("[color=green]📊 收到年度报告 — 第 %d 年[/color]" % report_data.get("year", 0))
-			if _annual_report_popup:
-				_annual_report_popup.show_report(report_data)
+			if _annual_popup: _annual_popup.show_report(data.get("data", {}))
 		"order_meeting":
-			var order_data: Dictionary = data.get("data", {})
-			var market_name: String = order_data.get("market_name", "")
-			var orders: Array = order_data.get("orders", [])
-			var year: int = order_data.get("year", 1)
-			var predictions: Array = order_data.get("predictions", [])
-			_log("[color=cyan]📋 收到订货会数据 — %s  第 %d 年 (%d 张订单)[/color]" % [market_name, year, orders.size()])
-			if _order_meeting_popup:
-				_order_meeting_popup.show_orders(market_name, orders, year, predictions)
+			if _order_popup:
+				var od := data.get("data", {})
+				_order_popup.show_orders(od.get("market",""), od.get("orders",[]), od.get("year",1))
 
-
-# ── UI Updates ──
 
 func _update_ui() -> void:
-	var gs: Dictionary = _game_state
-	_year_label.text = "📅 第 %d 年" % gs.get("game_year", 1)
-	_quarter_label.text = " 第 %d 季度" % gs.get("game_quarter", 1)
-	_cash_label.text = " 💰 %dM" % gs.get("cash", 0)
-	_phase_label.text = " 阶段 %d" % gs.get("phase", 1)
+	var s := _state
+	_year_lbl.text = "📅 第 %d 年" % s.get("game_year", 1)
+	_quarter_lbl.text = "Q%d" % s.get("game_quarter", 1)
+	_cash_lbl.text = "💰 %dM" % s.get("cash", 0)
 
-	if _production_view:
-		_production_view.update(gs.get("factories", []))
+	var total_assets := s.get("cash", 0)
+	for f in s.get("factories", []): total_assets += f.get("value", 0)
+	_asset_lbl.text = "📊 资产 %dM" % total_assets
 
-	if _inventory_dashboard:
-		_inventory_dashboard.update(gs)
+	var ph := s.get("phase", 1)
+	var names := ["", "适应期", "市场竞争", "高阶经营", "复盘"]
+	_phase_lbl2.text = "第%d节 · %s (%d-%d年)" % [ph, names[min(ph, 4)], _yr(ph)[0], _yr(ph)[1]]
 
-	if _market_panel:
-		_market_panel.update(gs.get("markets", []))
+	if _prod_view: _prod_view.update(s.get("factories", []))
+	if _inv_dashboard: _inv_dashboard.update(s)
 
+	# Update left market list
+	for c in _market_container.get_children(): c.queue_free()
+	for m in s.get("markets", []):
+		if m.get("developed", false):
+			_market_container.add_child(_label("✅ " + m.get("name","") + "  #" + str(m.get("rank",1)), T.body, T.colors.success))
+		else:
+			_market_container.add_child(_label("◦  " + m.get("name",""), T.body, T.colors.text_muted))
 
-func _show_decision(data: Dictionary) -> void:
-	_decision_type = data.get("decision_type", "")
-	_popup_title.text = "📋 %s" % _decision_type
+	# Update loan slots
+	for c in _loan_container.get_children(): c.queue_free()
+	var ll := s.get("long_term_loans", [])
+	var sl := s.get("short_term_loans", [])
+	_loan_container.add_child(_label("长贷 5%/年 | 已贷: %dM" % _sum_loans(ll), T.body, T.colors.text_medium))
+	_loan_container.add_child(_label("短贷 10%/年 | 已贷: %dM" % _sum_loans(sl), T.body, T.colors.text_medium))
 
-	match _decision_type:
-		"bidding":
-			_popup_input.placeholder_text = "输入营销投入 M"
-			_popup_input.text = "2"
-			_popup_btn.text = "✅ 提交竞标"
-		_:
-			_popup_input.placeholder_text = "输入..."
-			_popup_btn.text = "确认"
-
-	_popup_panel.visible = true
-
-
-# ── Button Handlers ──
-
-func _on_popup_confirmed() -> void:
-	var input_val: String = _popup_input.text.strip_edges()
-	_hide_popup()
-
-	match _decision_type:
-		"bidding":
-			var spend: int = int(input_val) if input_val.is_valid_int() else 2
-			_log("[color=green]📋 提交竞标: 营销投入 %dM[/color]" % spend)
-			_ws_manager.send_action({
-				"action": "submit_bidding",
-				"strategies": [{"market_name": "平城", "marketing_spend": spend}]
-			})
-			_action_btn.text = "▶ 执行下一季度"
-			_action_btn.disabled = false
-	_popup_input.text = ""
+	# Update R&D
+	for c in _rd_container.get_children(): c.queue_free()
+	for rd in s.get("products_rd", []):
+		var pname := "?"
+		match str(rd.get("product","")):
+			"ben_ma": pname = "🐴 奔马"
+			"meng_hu": pname = "🐯 猛虎"
+			"fei_ying": pname = "🦅 飞鹰"
+			"tian_long": pname = "🐉 天龙"
+		if rd.get("completed", false):
+			_rd_container.add_child(_label(pname + " ✓", T.body, T.colors.success))
+		else:
+			_rd_container.add_child(_label("%s  %d/%d" % [pname, rd.get("progress",0), rd.get("total",0)], T.body, T.colors.text_medium))
 
 
-func _on_action_clicked() -> void:
-	_action_btn.disabled = true
-	_action_btn.text = "执行中..."
-	_log("[color=cyan]▶ 执行下一季度...[/color]")
-	_ws_manager.send_action({"action": "next_quarter"})
+# ═══════════════ BUTTON HANDLERS ═══════════════
+
+func _on_bid_ok() -> void:
+	_bid_popup.visible = false
+	var val := int(_bid_input.text) if _bid_input.text.is_valid_int() else 2
+	_ws.send_action({"action": "submit_bidding", "strategies": [{"market_name":"平城","marketing_spend":val}]})
+	_action_btn.text = "▶ 执行下一季度"; _action_btn.disabled = false
+
+func _on_next_quarter() -> void:
+	_action_btn.disabled = true; _action_btn.text = "执行中..."
+	_ws.send_action({"action": "next_quarter"})
 
 
-func _on_discount_clicked() -> void:
-	if _factory_dialog:
-		_factory_dialog.show_dialog(_game_state)
+# ═══════════════ PRIVATE HELPERS ═══════════════
 
+func _hbox(pos: Vector2, sz: Vector2, bg: Color) -> HBoxContainer:
+	var b := HBoxContainer.new(); b.position = pos; b.size = sz; b.custom_minimum_size = sz
+	b.add_theme_color_override("background_color", bg); return b
 
-func _on_order_meeting_confirmed(selected_ids: Array) -> void:
-	if selected_ids.is_empty():
-		return
-	_log("[color=green]📋 提交 %d 张订单[/color]" % selected_ids.size())
-	_ws_manager.send_action({
-		"action": "submit_orders",
-		"order_ids": selected_ids
-	})
+func _label(txt: String, fs: int, cl: Color) -> Label:
+	var l := Label.new(); l.text = txt
+	l.add_theme_font_size_override("font_size", fs)
+	l.add_theme_color_override("font_color", cl); return l
 
+func _add(parent: Control, txt: String) -> Label:
+	return _label(txt, T.body, T.colors.text_medium)
 
-func _on_loan_clicked() -> void:
-	if _factory_dialog:
-		_factory_dialog.show_dialog(_game_state)
+func _sep() -> Label:
+	return _label("  |  ", T.body, T.colors.border)
 
+func _gap() -> Control:
+	var g := Control.new(); g.size_flags_horizontal = SIZE_EXPAND_FILL; return g
 
-# ── Factory Dialog Handlers ──
+func _vline() -> ColorRect:
+	var c := ColorRect.new(); c.color = T.colors.border; c.size.x = 1; return c
 
-func _on_factory_ordered(line_type: String) -> void:
-	var type_label: String = "手工线"
-	match line_type:
-		"semi_auto":
-			type_label = "半自动"
-		"auto":
-			type_label = "全自动"
-	_log("[color=green]🔧 订购新产线: %s[/color]" % type_label)
-	_ws_manager.send_action({
-		"action": "order_production_line",
-		"line_type": line_type
-	})
+func _spacer(h: int) -> Control:
+	var c := Control.new(); c.custom_minimum_size = Vector2(0, h); return c
 
+func _card_bg() -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new(); sb.bg_color = T.colors.card; sb.set_corner_radius_all(8)
+	sb.content_margin_left = 0; sb.content_margin_top = 0; return sb
 
-func _on_factory_loan_requested(loan_type: String, amount: int) -> void:
-	var type_label: String = "短期" if loan_type == "short" else "长期"
-	_log("[color=yellow]🏦 申请%s贷款 %dM...[/color]" % [type_label, amount])
-	_ws_manager.send_action({
-		"action": "take_loan",
-		"loan_type": loan_type,
-		"amount": amount
-	})
+func _flat_bg(cl: Color, r: int) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new(); sb.bg_color = cl; sb.set_corner_radius_all(r); return sb
 
+func _btn(txt: String, bg: Color, fg: Color) -> Button:
+	var b := Button.new(); b.text = txt
+	b.add_theme_font_size_override("font_size", T.body)
+	b.add_theme_color_override("font_color", fg)
+	var sb := StyleBoxFlat.new(); sb.bg_color = bg; sb.set_corner_radius_all(6)
+	sb.content_margin_left = 18; sb.content_margin_right = 18
+	sb.content_margin_top = 8; sb.content_margin_bottom = 8
+	b.add_theme_stylebox_override("normal", sb); return b
 
-func _on_factory_discount_confirmed(amount: int) -> void:
-	_log("[color=yellow]💰 贴现 %dM 应收款...[/color]" % amount)
-	_ws_manager.send_action({
-		"action": "discount_receivable",
-		"amount": amount
-	})
+func _btn_light(txt: String) -> Button:
+	return _btn(txt, T.colors.white, T.colors.text_medium)
 
+func _section_head(txt: String) -> Label:
+	return _label(txt, T.h2, T.colors.text_strong)
 
-func _on_market_panel_submit(strategies: Array) -> void:
-	if strategies.is_empty():
-		return
-	_log("[color=green]📋 提交竞标策略: %d 个市场[/color]" % strategies.size())
-	_ws_manager.send_action({
-		"action": "submit_bidding",
-		"strategies": strategies
-	})
-	_action_btn.text = "▶ 执行下一季度"
-	_action_btn.disabled = false
+func _yr(phase: int) -> Array[int]:
+	match phase: 1: return [1,4]; 2: return [5,7]; 3: return [8,11]; _: return [12,12]
+
+func _sum_loans(loans: Array) -> int:
+	var s := 0; for l in loans: s += l.get("amount", 0); return s

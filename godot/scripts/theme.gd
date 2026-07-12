@@ -1,11 +1,12 @@
 extends Node
-## OpenDesign 设计主题常量——供所有 UI 组件引用。
+## OpenDesign a.light 设计主题常量。
 ##
-## 使用方式：T.colors.brand / T.fonts.head 等（通过 preload 引用）
+## 使用：const T = preload("res://scripts/theme.gd")
+## 访问：T.colors.brand / T.h1 / T.body 等
 
 class_name AppTheme
 
-# ── Colors (OpenDesign a.light tokens) ──
+# ── Colors (OpenDesign tokens) ──
 
 const colors := {
 	# Brand
@@ -37,7 +38,7 @@ const colors := {
 	"danger_bg": Color("#fecaca"),
 	"danger_text": Color("#7f1d1d"),
 
-	# Product
+	# Products
 	"benma": Color("#c7000b"),
 	"menghu": Color("#1e6fe0"),
 	"feiying": Color("#c28600"),
@@ -50,53 +51,49 @@ const colors := {
 	"idle": Color("#c4cad4"),
 }
 
-# ── Fonts ──
+# ── Font sizes ──
 
 const fonts := {
+	"h1": 18,
+	"h2": 16,
 	"head": 14,
 	"body": 13,
 	"small": 12,
 	"tiny": 10,
-	"h1": 18,
-	"h2": 16,
 }
+
+# ── Shorthand constants (T.h1, T.body, etc.) ──
+
+const h1: int = 18
+const h2: int = 16
+const head: int = 14
+const body: int = 13
+const small: int = 12
+const tiny: int = 10
 
 # ── Spacing ──
 
-const space := {
-	"xs": 4,
-	"sm": 8,
-	"md": 12,
-	"lg": 16,
-	"xl": 24,
-}
+const xs: int = 4
+const sm: int = 8
+const md: int = 12
+const lg: int = 16
+const xl: int = 24
 
-# ── Helpers ──
+# ── Static helpers ──
 
-## 给 Control 节点设置基础样式
 static func style_card(node: Control) -> void:
 	node.add_theme_color_override("background_color", colors.card)
-	node.add_theme_stylebox_override("border", _make_stylebox(colors.border, 8))
 
-## 创建圆角边框
-static func _make_stylebox(color: Color, radius: int) -> StyleBoxFlat:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = color
-	sb.set_corner_radius_all(radius)
-	return sb
-
-## 获取产品对应颜色
-static func product_color(product_name: String) -> Color:
-	match product_name.to_lower():
+static func product_color(name: String) -> Color:
+	match name.to_lower():
 		"ben_ma", "奔马": return colors.benma
 		"meng_hu", "猛虎": return colors.menghu
 		"fei_ying", "飞鹰": return colors.feiying
 		"tian_long", "天龙": return colors.tianlong
 	return colors.idle
 
-## 产品对应图标
-static func product_icon(product_name: String) -> String:
-	match product_name.to_lower():
+static func product_icon(name: String) -> String:
+	match name.to_lower():
 		"ben_ma", "奔马": return "🐴"
 		"meng_hu", "猛虎": return "🐯"
 		"fei_ying", "飞鹰": return "🦅"
