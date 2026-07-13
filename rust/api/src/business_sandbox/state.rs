@@ -374,6 +374,10 @@ pub enum PlayerAction {
     SelectOrder {
         order_ids: Vec<String>,
     },
+    /// 确认选单（订单会上选择）
+    ConfirmOrders {
+        order_ids: Vec<String>,
+    },
     /// 做出决策
     MakeDecision {
         decisions: Vec<DecisionItem>,
@@ -388,6 +392,28 @@ pub enum PlayerAction {
     TakeLoan {
         loan_type: String,
         amount: u32,
+    },
+    /// 开始新产品研发
+    StartRDA {
+        product: String,
+    },
+    /// 建设新产线
+    BuildLine {
+        line_type: String,
+        factory_id: String,
+    },
+    /// 产线转产
+    SwitchProduct {
+        line_id: u32,
+        product: String,
+    },
+    /// 采购原材料
+    PurchaseRawMaterial {
+        quantity: u32,
+    },
+    /// 开发新市场
+    DevelopMarket {
+        market_name: String,
     },
 }
 

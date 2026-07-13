@@ -21,6 +21,8 @@ pub struct GameInstance {
     pub annual_reports: Vec<AnnualReport>,
     /// "waiting" | "year_start" | "quarter_ops" | "year_end"
     pub current_phase: String,
+    // ── 原材料订购 ──
+    pub raw_material_order_quantity: u32,
     // ── 年度财务跟踪（每年清零） ──
     pub annual_revenue: u32,
     pub annual_cost_of_goods: u32,
@@ -29,6 +31,8 @@ pub struct GameInstance {
     pub annual_interest_expense: u32,
     pub annual_discount_fee: u32,
     pub annual_admin_expense: u32,
+    // ── 订单会暂存 ──
+    pub pending_orders: Vec<Order>,
 }
 
 impl GameManager {
@@ -51,6 +55,7 @@ impl GameManager {
                 state: Self::initial_state(),
                 annual_reports: Vec::new(),
                 current_phase: "waiting".to_string(),
+                raw_material_order_quantity: 2,
                 annual_revenue: 0,
                 annual_cost_of_goods: 0,
                 annual_rd_expense: 0,
@@ -58,6 +63,7 @@ impl GameManager {
                 annual_interest_expense: 0,
                 annual_discount_fee: 0,
                 annual_admin_expense: 0,
+                pending_orders: Vec::new(),
             },
         );
         Ok(())
@@ -84,25 +90,13 @@ impl GameManager {
                     product: Some(Product::BenMa),
                 }],
             }],
-            // 产品研发（奔马已拥有）
+            // 产品研发（仅奔马已研发完成，其他产品需玩家决定是否投入研发）
             products_rd: vec![
                 ProductRDA {
-                    product: Product::MengHu,
-                    progress: 0,
-                    total: product_rd_total_quarters(Product::MengHu, false),
-                    completed: false,
-                },
-                ProductRDA {
-                    product: Product::FeiYing,
-                    progress: 0,
-                    total: product_rd_total_quarters(Product::FeiYing, false),
-                    completed: false,
-                },
-                ProductRDA {
-                    product: Product::TianLong,
-                    progress: 0,
-                    total: product_rd_total_quarters(Product::TianLong, false),
-                    completed: false,
+                    product: Product::BenMa,
+                    progress: 1,
+                    total: 1,
+                    completed: true,
                 },
             ],
             // 原材料库存 8 个单位，采购在途 2 个
@@ -224,14 +218,52 @@ impl GameManager {
                     instance.annual_discount_fee = 0;
                     instance.annual_admin_expense = 0;
                 }
-                // 第一年也计入销售费用
                 instance.annual_sales_expense += total_spend;
                 instance.current_phase = "quarter_ops".to_string();
+
+                // 为每个已开发市场生成订单
+                for market in &instance.state.markets {
+                    if !market.developed {
+                        continue;
+                    }
+                    let market_spend = instance
+                        .state
+                        .bidding_strategies
+                        .iter()
+                        .find(|s| s.market_name == market.name)
+                        .map(|s| s.marketing_spend)
+                        .unwrap_or(0);
+                    let orders = generate_orders(
+                        market_spend,
+                        market,
+                        &instance.state,
+                    );
+                    instance.pending_orders.extend(orders);
+                }
 
                 let mut events: Vec<GameEvent> = vec![
                     GameEvent::Message { data: format!("提交竞标策略成功，营销费用 {}M", total_spend) },
                     GameEvent::PhaseChange { data: PhaseChangeData { year: instance.state.game_year, quarter: instance.state.game_quarter, phase: "quarter_ops".to_string() } },
                 ];
+
+                // 发送订单会事件
+                if !instance.pending_orders.is_empty() {
+                    // 使用第一个已开发市场作为订单会市场
+                    let developed_market = instance
+                        .state
+                        .markets
+                        .iter()
+                        .find(|m| m.developed)
+                        .map(|m| m.name.clone())
+                        .unwrap_or_else(|| "平城".to_string());
+                    let available = instance.pending_orders.clone();
+                    events.push(GameEvent::OrderMeeting {
+                        data: OrderMeetingData {
+                            market: developed_market,
+                            available_orders: available,
+                        },
+                    });
+                }
 
                 let state = instance.state.clone();
                 events.push(GameEvent::StateUpdate { data: Box::new(state) });
@@ -373,11 +405,230 @@ impl GameManager {
                 }
             }
 
-            PlayerAction::SelectOrder { .. } => {
-                Err(GameError::InvalidAction("选单操作暂未实现".to_string()))
+            PlayerAction::SelectOrder { order_ids } | PlayerAction::ConfirmOrders { order_ids } => {
+                if instance.pending_orders.is_empty() {
+                    return Err(GameError::InvalidAction("没有待选订单".to_string()));
+                }
+                let mut selected = Vec::new();
+                let mut remaining = Vec::new();
+                for order in instance.pending_orders.drain(..) {
+                    if order_ids.contains(&order.id) {
+                        selected.push(order);
+                    } else {
+                        remaining.push(order);
+                    }
+                }
+                instance.pending_orders = remaining;
+                // 将选中的订单加入 game_state.orders
+                instance.state.orders.extend(selected.clone());
+                Ok(vec![GameEvent::Message {
+                    data: format!("已确认 {} 张订单", selected.len()),
+                }])
             }
-            PlayerAction::MakeDecision { .. } => {
-                Err(GameError::InvalidAction("决策操作暂未实现".to_string()))
+
+            PlayerAction::MakeDecision { decisions } => {
+                let mut events = Vec::new();
+                for item in &decisions {
+                    match item.key.as_str() {
+                        "raw_material_order" => {
+                            if let Some(qty) = item.value.as_u64() {
+                                instance.raw_material_order_quantity = qty as u32;
+                                events.push(GameEvent::Message {
+                                    data: format!("原材料订购量设置为 {} 单位", qty),
+                                });
+                            }
+                        }
+                        "market_development" => {
+                            if let Some(market_name) = item.value.as_str() {
+                                if let Some(market) = instance
+                                    .state
+                                    .markets
+                                    .iter_mut()
+                                    .find(|m| m.name == market_name)
+                                {
+                                    if !market.developed {
+                                        let dev_cost = 2u32; // 市场开发费 2M
+                                        if instance.state.cash < dev_cost {
+                                            return Err(GameError::InsufficientFunds {
+                                                required: dev_cost as f64,
+                                                available: instance.state.cash as f64,
+                                            });
+                                        }
+                                        instance.state.cash -= dev_cost;
+                                        market.developed = true;
+                                        events.push(GameEvent::Message {
+                                            data: format!("市场 {} 开发成功，费用 {}M", market_name, dev_cost),
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                        _ => {
+                            events.push(GameEvent::Message {
+                                data: format!("未知决策项: {}", item.key),
+                            });
+                        }
+                    }
+                }
+                let state = instance.state.clone();
+                events.push(GameEvent::StateUpdate { data: Box::new(state) });
+                Ok(events)
+            }
+
+            PlayerAction::StartRDA { product } => {
+                let product = parse_product(&product)
+                    .ok_or_else(|| GameError::InvalidAction(format!("未知产品: {}", product)))?;
+                if product == Product::BenMa {
+                    return Err(GameError::InvalidAction("奔马已拥有，无需研发".to_string()));
+                }
+                // 检查是否已开始或已完成
+                if let Some(rd) = instance.state.products_rd.iter().find(|r| r.product == product) {
+                    if rd.completed {
+                        return Err(GameError::InvalidAction(format!("{:?} 已研发完成", product)));
+                    }
+                    return Err(GameError::InvalidAction(format!("{:?} 已在研发中", product)));
+                }
+                let has_feijing = instance
+                    .state
+                    .products_rd
+                    .iter()
+                    .any(|r| r.product == Product::FeiYing && r.completed);
+                let total = product_rd_total_quarters(product, has_feijing);
+                instance.state.products_rd.push(ProductRDA {
+                    product,
+                    progress: 0,
+                    total,
+                    completed: false,
+                });
+                Ok(vec![GameEvent::Message {
+                    data: format!("开始研发 {:?}，预计 {} 季度完成", product, total),
+                }])
+            }
+
+            PlayerAction::BuildLine { line_type, factory_id } => {
+                let lt = parse_line_type(&line_type)
+                    .ok_or_else(|| GameError::InvalidAction(format!("未知产线类型: {}", line_type)))?;
+                let build_cost = lt.build_cost_per_quarter();
+                if instance.state.cash < build_cost {
+                    return Err(GameError::InsufficientFunds {
+                        required: build_cost as f64,
+                        available: instance.state.cash as f64,
+                    });
+                }
+                let factory = instance
+                    .state
+                    .factories
+                    .iter_mut()
+                    .find(|f| f.id == factory_id)
+                    .ok_or_else(|| GameError::InvalidAction(format!("工厂不存在: {}", factory_id)))?;
+                if factory.lines.len() as u32 >= factory.capacity {
+                    return Err(GameError::InvalidAction(format!(
+                        "工厂 {} 容量已满（{} 条）",
+                        factory_id, factory.capacity
+                    )));
+                }
+                let new_id = factory.lines.iter().map(|l| l.id).max().unwrap_or(0) + 1;
+                instance.state.cash -= build_cost;
+                factory.lines.push(ProductionLine {
+                    id: new_id,
+                    line_type: lt,
+                    status: LineStatus::Building(lt.build_time()),
+                    product: None,
+                });
+                Ok(vec![GameEvent::Message {
+                    data: format!(
+                        "开始建设产线{}（{:?}），首期费用 {}M，预计 {} 季度完成",
+                        new_id, lt, build_cost, lt.build_time()
+                    ),
+                }])
+            }
+
+            PlayerAction::SwitchProduct { line_id, product } => {
+                let product = parse_product(&product)
+                    .ok_or_else(|| GameError::InvalidAction(format!("未知产品: {}", product)))?;
+                // 检查研发是否完成
+                let rd_completed = instance
+                    .state
+                    .products_rd
+                    .iter()
+                    .any(|r| r.product == product && r.completed);
+                if product != Product::BenMa && !rd_completed {
+                    return Err(GameError::RDAIncomplete(format!(
+                        "{:?} 尚未研发完成",
+                        product
+                    )));
+                }
+                let line = instance
+                    .state
+                    .factories
+                    .iter_mut()
+                    .flat_map(|f| &mut f.lines)
+                    .find(|l| l.id == line_id)
+                    .ok_or_else(|| GameError::InvalidAction(format!("产线不存在: {}", line_id)))?;
+                if !matches!(line.status, LineStatus::Idle) {
+                    return Err(GameError::InvalidAction(format!(
+                        "产线{} 非空闲状态，无法转产",
+                        line_id
+                    )));
+                }
+                let switch_cost = line.line_type.switch_cost();
+                let switch_time = line.line_type.switch_time();
+                if switch_time == 0 {
+                    // 手工线即时转产
+                    line.product = Some(product);
+                    Ok(vec![GameEvent::Message {
+                        data: format!("产线{} 即时转产为 {:?}", line_id, product),
+                    }])
+                } else {
+                    if instance.state.cash < switch_cost {
+                        return Err(GameError::InsufficientFunds {
+                            required: switch_cost as f64,
+                            available: instance.state.cash as f64,
+                        });
+                    }
+                    instance.state.cash -= switch_cost;
+                    line.status = LineStatus::SwitchingTo(switch_time, product);
+                    Ok(vec![GameEvent::Message {
+                        data: format!(
+                            "产线{} 开始转产为 {:?}，费用 {}M，预计 {} 季度完成",
+                            line_id, product, switch_cost, switch_time
+                        ),
+                    }])
+                }
+            }
+
+            PlayerAction::PurchaseRawMaterial { quantity } => {
+                instance.raw_material_order_quantity = quantity;
+                Ok(vec![GameEvent::Message {
+                    data: format!("原材料订购量设置为 {} 单位（下季度到货）", quantity),
+                }])
+            }
+
+            PlayerAction::DevelopMarket { market_name } => {
+                let dev_cost = 2u32;
+                if instance.state.cash < dev_cost {
+                    return Err(GameError::InsufficientFunds {
+                        required: dev_cost as f64,
+                        available: instance.state.cash as f64,
+                    });
+                }
+                let market = instance
+                    .state
+                    .markets
+                    .iter_mut()
+                    .find(|m| m.name == market_name)
+                    .ok_or_else(|| GameError::InvalidAction(format!("市场不存在: {}", market_name)))?;
+                if market.developed {
+                    return Err(GameError::InvalidAction(format!(
+                        "市场 {} 已开发",
+                        market_name
+                    )));
+                }
+                instance.state.cash -= dev_cost;
+                market.developed = true;
+                Ok(vec![GameEvent::Message {
+                    data: format!("市场 {} 开发成功，费用 {}M", market_name, dev_cost),
+                }])
             }
         }
     }
@@ -500,13 +751,13 @@ impl GameManager {
             }
         }
 
-        // ── 第 5 步：新原料采购（自动 2 单位） ──
+        // ── 第 5 步：新原料采购（按玩家设定数量，默认 2） ──
         {
-            let auto_order = 2u32;
-            instance.state.raw_material_orders += auto_order;
+            let order_qty = instance.raw_material_order_quantity.max(1);
+            instance.state.raw_material_orders += order_qty;
             events.push(GameEvent::Message { data: format!(
-                "自动采购原材料 {} 单位",
-                auto_order
+                "采购原材料 {} 单位（下季度到货）",
+                order_qty
             ) });
         }
 
@@ -984,4 +1235,82 @@ fn declare_game_over(
     state.game_over_reason = Some(reason.to_string());
     events.push(GameEvent::GameOver { data: GameOverData { reason: reason.to_string() } });
     std::mem::take(events)
+}
+
+/// 根据营销投入和市场生成订单列表
+fn generate_orders(
+    marketing_spend: u32,
+    market: &Market,
+    state: &BusinessGameState,
+) -> Vec<Order> {
+    use rand::Rng;
+    let mut rng = rand::thread_rng();
+
+    // 每 1M 营销费激活 1 张订单，上限 5
+    let count = marketing_spend.min(5) as usize;
+    let mut orders = Vec::with_capacity(count);
+
+    // 可用的产品列表（已研发完成的）
+    let available_products: Vec<Product> = state
+        .products_rd
+        .iter()
+        .filter(|r| r.completed)
+        .map(|r| r.product)
+        .collect();
+
+    if available_products.is_empty() {
+        return orders;
+    }
+
+    for i in 0..count {
+        let product = available_products[rng.gen_range(0..available_products.len())];
+        // 随机生成订单参数
+        let quantity = rng.gen_range(1..=3u32);
+        let base_price = match product {
+            Product::BenMa => 5u32,
+            Product::MengHu => 8,
+            Product::FeiYing => 12,
+            Product::TianLong => 18,
+        };
+        // 价格浮动 ±20%
+        let price_variation = rng.gen_range(0.8..=1.2);
+        let unit_price = ((base_price as f64) * price_variation).round() as u32;
+        // 账期 1-4 季度
+        let account_period = rng.gen_range(1..=4u32);
+        // 10% 概率加急
+        let urgent = rng.gen_bool(0.1);
+
+        orders.push(Order {
+            id: format!("ORD-{}-{}-{}", market.name, product.name_cn(), i + 1),
+            product,
+            quantity,
+            unit_price,
+            account_period,
+            delivered: false,
+            urgent,
+        });
+    }
+
+    orders
+}
+
+/// 从字符串解析产品类型
+fn parse_product(s: &str) -> Option<Product> {
+    match s.to_lowercase().as_str() {
+        "benma" | "ben_ma" | "奔马" => Some(Product::BenMa),
+        "menghu" | "meng_hu" | "猛虎" => Some(Product::MengHu),
+        "feiying" | "fei_ying" | "飞鹰" => Some(Product::FeiYing),
+        "tianlong" | "tian_long" | "天龙" => Some(Product::TianLong),
+        _ => None,
+    }
+}
+
+/// 从字符串解析产线类型
+fn parse_line_type(s: &str) -> Option<LineType> {
+    match s.to_lowercase().as_str() {
+        "manual" | "手工线" | "手工" => Some(LineType::Manual),
+        "semiauto" | "semi_auto" | "半自动线" | "半自动" => Some(LineType::SemiAuto),
+        "fullauto" | "full_auto" | "全自动线" | "全自动" => Some(LineType::FullAuto),
+        _ => None,
+    }
 }
