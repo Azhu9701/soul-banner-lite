@@ -46,7 +46,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     let content_area = Rect { y: content_y, height: content_height.max(1), ..area };
 
     match app.active_tab {
-        Tab::Verdict => draw_tab(f, app, content_area, " 综合裁决 ", &app.synthesis_text()),
+        Tab::Verdict => draw_verdict_structured(f, app, content_area),
         Tab::Rounds => draw_rounds(f, app, content_area),
         Tab::Collisions => draw_tab_list(f, app, content_area, " 碰撞检测 ", &app.collisions(), "⚡"),
         Tab::Souls => draw_souls(f, app, content_area),
@@ -162,5 +162,104 @@ fn draw_souls(f: &mut Frame, app: &App, area: Rect) {
 fn truncate(s: &str, max: usize) -> String {
     if s.chars().count() <= max { s.to_string() } else {
         format!("{}…", s.chars().take(max).collect::<String>())
+    }
+}
+
+/// Render structured decision report, falling back to raw text
+fn draw_verdict_structured(f: &mut Frame, app: &App, area: Rect) {
+    if let Some(s) = app.structured_synthesis() {
+        let mut lines: Vec<Line> = Vec::new();
+
+        // Consensus
+        if !s.consensus.is_empty() {
+            lines.push(Line::from(Span::styled(
+                format!("✅ 共识 ({})", s.consensus.len()),
+                Style::default().fg(Color::Green).add_modifier(Modifier::BOLD),
+            )));
+            for (i, c) in s.consensus.iter().enumerate() {
+                lines.push(Line::from(Span::raw(format!("{}. {}", i + 1, c.point))));
+                lines.push(Line::from(Span::styled(
+                    format!("   共享者: {} | {}", c.shared_by.join(", "), c.depth),
+                    Style::default().fg(Color::DarkGray),
+                )));
+            }
+            lines.push(Line::from(""));
+        }
+
+        // Divergence
+        if !s.divergence.is_empty() {
+            lines.push(Line::from(Span::styled(
+                format!("❌ 分歧 ({})", s.divergence.len()),
+                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+            )));
+            for (i, d) in s.divergence.iter().enumerate() {
+                lines.push(Line::from(Span::raw(format!("{}. {} [{}]", i + 1, d.axis, d.divergence_type))));
+                for pos in &d.positions {
+                    lines.push(Line::from(Span::styled(
+                        format!("   {}: {}", pos.soul_name, pos.stance),
+                        Style::default().fg(Color::Yellow),
+                    )));
+                }
+            }
+            lines.push(Line::from(""));
+        }
+
+        // Blind spots
+        if !s.blind_spots.is_empty() {
+            lines.push(Line::from(Span::styled(
+                format!("🔍 盲点 ({})", s.blind_spots.len()),
+                Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD),
+            )));
+            for (i, b) in s.blind_spots.iter().enumerate() {
+                let structural = if b.is_structural { " [结构性]" } else { "" };
+                lines.push(Line::from(Span::raw(format!("{}. {} — {}{}", i + 1, b.dimension, b.missing_perspective, structural))));
+                if let Some(ref suggested) = b.suggested_soul {
+                    lines.push(Line::from(Span::styled(
+                        format!("   建议补充: {}", suggested),
+                        Style::default().fg(Color::Cyan),
+                    )));
+                }
+            }
+            lines.push(Line::from(""));
+        }
+
+        // Principal contradiction
+        lines.push(Line::from(Span::styled(
+            format!("⚡ 核心矛盾: {}", s.principal_contradiction.description),
+            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+        )));
+        lines.push(Line::from(Span::raw(format!("   涉及方: {}", s.principal_contradiction.parties.join(", ")))));
+        lines.push(Line::from(""));
+
+        // Action program
+        if !s.action_program.is_empty() {
+            lines.push(Line::from(Span::styled(
+                format!("📋 行动建议 ({})", s.action_program.len()),
+                Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+            )));
+            for a in &s.action_program {
+                let priority = match a.priority {
+                    1 => "P1".to_string(),
+                    2 => "P2".to_string(),
+                    _ => "P3".to_string(),
+                };
+                lines.push(Line::from(Span::styled(
+                    format!("  {} [{}] {}: {}", priority, a.timeline, a.direction, a.rationale),
+                    Style::default().fg(Color::White),
+                )));
+            }
+        }
+
+        let block = Block::default().borders(Borders::ALL).title(format!(
+            " 决策报告 | 共识:{} 分歧:{} 盲点:{} ",
+            s.consensus.len(), s.divergence.len(), s.blind_spots.len()
+        ));
+        f.render_widget(
+            Paragraph::new(Text::from(lines)).block(block).scroll((app.scroll, 0)),
+            area,
+        );
+    } else {
+        // Fallback to raw text
+        draw_tab(f, app, area, " 综合裁决 ", &app.synthesis_text());
     }
 }

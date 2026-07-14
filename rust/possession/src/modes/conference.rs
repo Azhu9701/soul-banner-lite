@@ -422,7 +422,7 @@ pub async fn run(
         let card_provider = synthesis_provider.clone();
 
         let synthesis_prompt = if collision_summary.is_empty() {
-            prompt_builder.build_synthesis_prompt(task, &synthesis_outputs)
+            prompt_builder.build_structured_synthesis_prompt(task, &synthesis_outputs)
         } else {
             prompt_builder.build_synthesis_with_collisions(task, &synthesis_outputs, &collision_summary)
         };

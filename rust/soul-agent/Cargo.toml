@@ -24,6 +24,8 @@ async-trait = { workspace = true }
 chrono = { workspace = true }
 tokio = { workspace = true }
 serde_json = { workspace = true }
+serde = { workspace = true }
+serde_yaml = "0.9"
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 clap = { version = "4", features = ["derive"] }
 colored = "2"

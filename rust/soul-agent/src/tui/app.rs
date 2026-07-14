@@ -1,4 +1,5 @@
 use possession::WsEvent;
+use foundation::SynthesisOutput;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Tab {
@@ -83,6 +84,26 @@ impl App {
             }
         }
         if text.is_empty() { "等待综合裁决...".into() } else { text }
+    }
+
+    /// Try to parse synthesis output as structured JSON
+    pub fn structured_synthesis(&self) -> Option<SynthesisOutput> {
+        let raw = self.synthesis_text();
+        // Try to find JSON in the text (it might be wrapped in markdown or have extra text)
+        if let Ok(parsed) = serde_json::from_str::<SynthesisOutput>(&raw) {
+            return Some(parsed);
+        }
+        // Try extracting JSON between { and }
+        if let Some(start) = raw.find('{') {
+            if let Some(end) = raw.rfind('}') {
+                let json = &raw[start..=end];
+                serde_json::from_str::<SynthesisOutput>(json).ok()
+            } else {
+                None
+            }
+        } else {
+            None
+        }
     }
 
     pub fn round_souls(&self) -> Vec<(String, String)> {
