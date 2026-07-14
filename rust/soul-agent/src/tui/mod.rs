@@ -32,16 +32,11 @@ pub async fn run(
     let store = Arc::new(SoulStore::new(config.data_dir.to_str().unwrap())?);
     let registry = Arc::new(SoulRegistry::new(store.clone()).await?);
 
-    // If no task given, enter input mode
+    // If no task given, enter input mode (keeps TUI running)
     let (final_task, final_souls) = if task.is_empty() {
         run_input_mode(&registry, &mode, &souls).await?
     } else {
-        let resolved_souls = if souls.is_empty() {
-            let all = registry.list_souls(&Default::default())?;
-            if all.len() >= 3 { all.iter().take(3).map(|s| s.name.clone()).collect() }
-            else { all.iter().map(|s| s.name.clone()).collect() }
-        } else { souls.clone() };
-        (task, resolved_souls)
+        (task, souls)
     };
 
     if final_task.is_empty() {
@@ -57,11 +52,53 @@ pub async fn run(
         _ => Some(PossessionMode::Conference),
     };
 
+    let resolved_souls: Vec<String> = if final_souls.is_empty() {
+        // Already resolved in input mode or via CLI args
+        vec!["default".into()]
+    } else {
+        final_souls.clone()
+    };
+
+    // ── TUI: show loading while engine runs ──
+    enable_raw_mode()?;
+    let mut stdout = io::stdout();
+    stdout.execute(EnterAlternateScreen)?;
+    let backend = CrosstermBackend::new(stdout);
+    let mut terminal = Terminal::new(backend)?;
+
+    // Render loading screen
+    terminal.draw(|f| {
+        use ratatui::layout::{Constraint, Direction, Layout};
+        use ratatui::style::{Color, Style};
+        use ratatui::text::Text;
+        use ratatui::widgets::{Block, Borders, Paragraph};
+
+        let area = f.area();
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([Constraint::Length(3), Constraint::Min(3)])
+            .split(area);
+
+        let title = Paragraph::new("🧠 Soul Agent")
+            .block(Block::default().borders(Borders::ALL).style(Style::default().fg(Color::Cyan)));
+        f.render_widget(title, chunks[0]);
+
+        let msg = format!(
+            "正在召唤 {} ...\n\n问题: {}\n\n请稍候，AI 正在分析和回应...",
+            resolved_souls.join("、"),
+            final_task
+        );
+        let loading = Paragraph::new(Text::from(msg))
+            .block(Block::default().borders(Borders::ALL).title(" 运行中 "))
+            .style(Style::default().fg(Color::Yellow));
+        f.render_widget(loading, chunks[1]);
+    })?;
+
     // Start session
     let (tx, mut rx) = tokio::sync::mpsc::channel::<WsEvent>(256);
     let input = PossessionInput {
         task: final_task.clone(),
-        souls: final_souls.clone(),
+        souls: resolved_souls.clone(),
         mode: mode_enum,
         topic: None, judgment: None, worry: None, unknown: None,
         interrogation_context: None, search_topic: false, search_results: None,
@@ -75,15 +112,9 @@ pub async fn run(
         events.push(event);
     }
 
-    // TUI
-    enable_raw_mode()?;
-    let mut stdout = io::stdout();
-    stdout.execute(EnterAlternateScreen)?;
-    let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
+    let mut app = App::new(final_task, resolved_souls, mode, events);
 
-    let mut app = App::new(final_task, final_souls, mode, events);
-
+    // ── Results loop ──
     loop {
         terminal.draw(|f| draw(f, &mut app))?;
 
@@ -109,7 +140,7 @@ pub async fn run(
     Ok(())
 }
 
-/// Input mode: user types question and selects souls in the terminal
+/// Input mode: TUI text input to collect task and soul selection
 async fn run_input_mode(
     registry: &SoulRegistry,
     mode: &str,
@@ -131,8 +162,6 @@ async fn run_input_mode(
     };
 
     let mut task_input = String::new();
-    let mut cursor: usize = 0;
-    let help = String::from("Enter:开始  Tab:选Soul  q:退出");
 
     loop {
         terminal.draw(|f| {
@@ -147,27 +176,24 @@ async fn run_input_mode(
                 .constraints([Constraint::Length(3), Constraint::Min(3), Constraint::Length(3)])
                 .split(area);
 
-            // Title
             let title = Paragraph::new("🧠 Soul Agent")
                 .block(Block::default().borders(Borders::ALL).style(Style::default().fg(Color::Cyan)));
             f.render_widget(title, chunks[0]);
 
-            // Task input
             let display = if task_input.is_empty() {
-                "在此输入你的问题...".to_string()
+                "在此输入你的问题...（Enter 提交，Tab 换 Soul）".to_string()
             } else {
-                task_input.clone()
+                format!("{}█", task_input)
             };
             let input_block = Paragraph::new(Text::from(display))
                 .block(Block::default().borders(Borders::ALL).title(" 问题 ").style(Style::default().fg(Color::Yellow)))
                 .wrap(Wrap { trim: false });
             f.render_widget(input_block, chunks[1]);
 
-            // Footer: souls + help
-            let souls_display = selected.join(", ");
+            let souls_display = selected.join("、");
             let footer_text = format!(
-                "Souls: {} | Mode: {} | {}",
-                souls_display, mode, help
+                "Souls: {} | Mode: {} | Enter:提交  Tab:换Soul  q:退出",
+                souls_display, mode
             );
             let footer = Paragraph::new(Text::from(footer_text))
                 .block(Block::default().borders(Borders::ALL).style(Style::default().fg(Color::DarkGray)));
@@ -188,13 +214,15 @@ async fn run_input_mode(
                         }
                     }
                     KeyCode::Tab => {
-                        // Rotate souls selection
                         if available.len() > 3 {
                             let start = ((selected.len() / 3) * 3) % available.len();
-                            selected = available.iter().skip(start).take(3).cloned().collect();
-                            if selected.len() < 3 {
-                                selected.extend(available.iter().take(3 - selected.len()).cloned());
+                            let mut new_selected: Vec<String> = available.iter()
+                                .skip(start).take(3).cloned().collect();
+                            if new_selected.len() < 3 {
+                                new_selected.extend(available.iter()
+                                    .take(3 - new_selected.len()).cloned());
                             }
+                            selected = new_selected;
                         }
                     }
                     KeyCode::Char(c) => {
@@ -202,12 +230,6 @@ async fn run_input_mode(
                     }
                     KeyCode::Backspace => {
                         task_input.pop();
-                    }
-                    KeyCode::Left => {
-                        cursor = cursor.saturating_sub(1);
-                    }
-                    KeyCode::Right => {
-                        cursor = (cursor + 1).min(task_input.len());
                     }
                     _ => {}
                 }
