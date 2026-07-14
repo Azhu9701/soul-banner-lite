@@ -1,0 +1,93 @@
+<h2>🎨 创业沙盘 UI 重新设计</h2>
+<p class="subtitle">参考工厂经营游戏风格，设计更游戏化的界面</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">方案 A：参考截图工厂游戏（推荐）</div>
+    <div class="mockup-body" style="padding:12px;font-family:monospace;font-size:11px;line-height:1.4;background:#1a1a2e;color:#eee;">
+      ┌──────────────────────────────────────────────┐
+      │ 🏢 创业沙盘   📅 第3年 Q2  💰 24M  📊 排名 #2 │
+      ├────────────┬──────────────────┬──────────────┤
+      │  市场       │   🏭 工厂——老工厂  │  库存        │
+      │ ┏━━━━━━━━┓ │  ┌────┐┌────┐┌───┐│ 原料: 8      │
+      │ ┃✅平城 #1┃ │  │手工1││半自2││空3││ 奔马在制: 2  │
+      │ ┃❌南城   ┃ │  │🐴奔││⏳建││ 🔧││ 成品: 奔马x4  │
+      │ ┃❌北城   ┃ │  │▓▓80%││░30%││   ││ 应收: 12M(2Q)│
+      │ ┗━━━━━━━━┛ │  └────┘└────┘└───┘│              │
+      │  营销投入   │  ┌────┐┌────┐┌───┐│  💳 贷款      │
+      │  [___2__]M │  │手工0││建设中││全自4││ 长贷: 0M    │
+      │  [提交竞标] │  │空闲││░25%││🐯猛││ 短贷: 0M    │
+      │            │  │   ││    ││▓▓60%││ 额度: 200M  │
+      │            │  └────┘└────┘└───┘│              │
+      ├────────────┴──────────────────┴──────────────┤
+      │ [📊年度报告] [📋订货会] [🏗️建产线] [💳贷款] [▶下一季］ │
+      └──────────────────────────────────────────────┘
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>设计要点</h3>
+</div>
+
+<div class="cards">
+  <div class="card" onclick="toggleSelect(this)" data-choice="topbar">
+    <div class="card-body">
+      <h4>📊 深色顶栏</h4>
+      <p>仿游戏 HUD 风格——深色半透明背景，年份/现金/排名一目了然</p>
+    </div>
+  </div>
+  <div class="card" onclick="toggleSelect(this)" data-choice="factory">
+    <div class="card-body">
+      <h4>🏭 产线卡片网格</h4>
+      <p>4 条产线用彩色边框卡片显示，进度条+产品图标+状态，仿截图里工厂的 3D 产线区域</p>
+    </div>
+  </div>
+  <div class="card" onclick="toggleSelect(this)" data-choice="panel">
+    <div class="card-body">
+      <h4>📋 左右侧面板</h4>
+      <p>左侧：市场状态+竞标；右侧：库存+贷款。半透明背景，游戏化边框</p>
+    </div>
+  </div>
+  <div class="card" onclick="toggleSelect(this)" data-choice="bottom">
+    <div class="card-body">
+      <h4>🎮 底部操作栏</h4>
+      <p>大按钮+图标，仿游戏主菜单——执行下一季度、看财报、订货会</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>配色方案</h3>
+</div>
+
+<div style="display:flex;gap:12px;flex-wrap:wrap;">
+  <div style="background:#1a1a2e;color:#eee;padding:16px;border-radius:8px;text-align:center;flex:1;min-width:80px;">
+    <div style="width:40px;height:40px;background:#e94560;border-radius:4px;margin:0 auto 8px;"></div>
+    <span style="font-size:10px;">#e94560<br>奔马/利润</span>
+  </div>
+  <div style="background:#1a1a2e;color:#eee;padding:16px;border-radius:8px;text-align:center;flex:1;min-width:80px;">
+    <div style="width:40px;height:40px;background:#0f3460;border-radius:4px;margin:0 auto 8px;"></div>
+    <span style="font-size:10px;">#0f3460<br>猛虎/深蓝</span>
+  </div>
+  <div style="background:#1a1a2e;color:#eee;padding:16px;border-radius:8px;text-align:center;flex:1;min-width:80px;">
+    <div style="width:40px;height:40px;background:#f5c518;border-radius:4px;margin:0 auto 8px;"></div>
+    <span style="font-size:10px;">#f5c518<br>飞鹰/金色</span>
+  </div>
+  <div style="background:#1a1a2e;color:#eee;padding:16px;border-radius:8px;text-align:center;flex:1;min-width:80px;">
+    <div style="width:40px;height:40px;background:#7b2d8e;border-radius:4px;margin:0 auto 8px;"></div>
+    <span style="font-size:10px;">#7b2d8e<br>天龙/紫色</span>
+  </div>
+</div>
+<div style="display:flex;gap:12px;margin-top:12px">
+  <div style="background:#2d3436;color:#eee;padding:16px;border-radius:8px;text-align:center;flex:1;">
+    <span style="font-size:11px;">🎨 背景: #1a1a2e 深海军蓝</span>
+  </div>
+  <div style="background:#16213e;color:#eee;padding:16px;border-radius:8px;text-align:center;flex:1;">
+    <span style="font-size:11px;">📦 卡片: #16213e + 1px 边框</span>
+  </div>
+  <div style="background:#0f3460;color:#eee;padding:16px;border-radius:8px;text-align:center;flex:1;">
+    <span style="font-size:11px;">🔘 按钮: #0f3460 hover→e94560</span>
+  </div>
+</div>
+</div>

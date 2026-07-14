@@ -1,0 +1,134 @@
+<h2>商业沙盘 · Godot 游戏设计</h2>
+<p class="subtitle">基于创业沙盘 PDF 玩法 + 3D 工厂游戏视觉风格</p>
+
+<h3>1. 核心玩法循环</h3>
+
+<div style="display:flex;flex-direction:column;gap:8px;padding:16px;background:var(--bg);border-radius:8px;border:1px solid var(--border);">
+  <div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--accent-bg);border-radius:6px;">
+    <span style="background:var(--accent);color:var(--bg);border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px;">1</span>
+    <span><strong>年度开始</strong> — AI-CEO 汇报上年经营成果（3D 场景播放财务数据动画）</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;padding:8px;border-radius:6px;">
+    <span style="background:var(--muted);color:var(--fg);border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px;">2</span>
+    <span><strong>经营决策</strong> — 用户在决策面板填写：研发投入、产能建设、营销预算、融资方案、定价策略</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--accent-bg);border-radius:6px;">
+    <span style="background:var(--accent);color:var(--bg);border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px;">3</span>
+    <span><strong>AI 角色讨论</strong> — CFO 分析财务风险、COO 分析产能、CMO 分析市场策略，各自在弹窗中给出建议</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;padding:8px;border-radius:6px;">
+    <span style="background:var(--muted);color:var(--fg);border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px;">4</span>
+    <span><strong>AI 综合输出</strong> — 管理咨询顾问整合意见，输出年度经营报告，更新财务数据</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--accent-bg);border-radius:6px;">
+    <span style="background:var(--accent);color:var(--bg);border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px;">5</span>
+    <span><strong>场景变化</strong> — 3D 工厂根据决策结果变化（新建生产线 / 仓库扩大 / 产品更新）</span>
+  </div>
+</div>
+
+<hr>
+
+<h3>2. 商业沙盘四阶段</h3>
+
+<div class="cards">
+  <div class="card" style="border-left:3px solid #4CAF50;">
+    <div class="card-body">
+      <h4>🌱 第1节（第1-4年）适应期</h4>
+      <p>学习规则、资本周转、角色分工。单项产品起步，手工/半自动生产线</p>
+    </div>
+  </div>
+  <div class="card" style="border-left:3px solid #FF9800;">
+    <div class="card-body">
+      <h4>📈 第2节（第5-7年）市场竞争</h4>
+      <p>多产品线、BCG 矩阵分析、ABC 成本法。需要差异化竞争策略</p>
+    </div>
+  </div>
+  <div class="card" style="border-left:3px solid #9C27B0;">
+    <div class="card-body">
+      <h4>🏆 第3节（第8-11年）高阶经营</h4>
+      <p>杜邦分析、ROE/EVA 考核、公司估值。资本市场运作</p>
+    </div>
+  </div>
+  <div class="card" style="border-left:3px solid #2196F3;">
+    <div class="card-body">
+      <h4>🔄 第4节 反思复盘</h4>
+      <p>现金流分析、商业模式评估、团队效率、领导力总结</p>
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<h3>3. 3D 场景布局</h3>
+
+<div style="padding:16px;background:var(--bg);border-radius:8px;border:1px solid var(--border);">
+  <pre style="font-size:12px;line-height:1.5;text-align:center;">
+┌──────────────────────────────────────────────┐
+│  📊 数据看板（营收/利润/市场份额大屏）        │
+├──────────────────────────────────────────────┤
+│                                              │
+│    ┌──────────┐  ┌──────────┐  ┌──────────┐  │
+│    │ 原料仓库  │  │  生产线   │  │ 成品仓库  │  │
+│    │  (3D)     │  │  (3D)    │  │  (3D)    │  │
+│    └──────────┘  └──────────┘  └──────────┘  │
+│                                              │
+│     ┌──────────────────────────┐              │
+│     │     董事会会议桌          │              │
+│     │  CEO  CFO  COO  CMO 顾问  │              │
+│     └──────────────────────────┘              │
+│                                              │
+├──────────────────────────────────────────────┤
+│  📋 决策面板 / 💬 弹窗对话                     │
+└──────────────────────────────────────────────┘
+  </pre>
+</div>
+
+<div class="section">
+  <p><strong>3D 场景元素：</strong></p>
+  <ul>
+    <li><strong>📦 原料仓库</strong> — 3D 堆叠的原料箱，库存量变化时自动增减</li>
+    <li><strong>⚙️ 生产线</strong> — 传送带/机器模型，不同阶段升级外观（手工→半自动→全自动）</li>
+    <li><strong>📦 成品仓库</strong> — 产品库存可视化</li>
+    <li><strong>🪑 董事会会议室</strong> — 椭圆桌 + AI 角色座位，用户点击角色弹出对话窗</li>
+    <li><strong>📊 数据大屏</strong> — 3D 场景中的屏幕，显示财务图表</li>
+  </ul>
+</div>
+
+<hr>
+
+<h3>4. 弹窗对话系统设计</h3>
+
+<div class="options" style="flex-direction:column;">
+  <div class="option" onclick="toggleSelect(this)" data-choice="chat" style="width:100%;">
+    <div class="letter">💬</div>
+    <div class="content">
+      <h3>点击 AI 角色 → 弹出聊天窗</h3>
+      <p>点击会议桌旁的 CEO/CFO 等角色模型，弹出半透明背景的对话窗口</p>
+      <ul>
+        <li>顶部：角色头像 + 名称 + 关闭按钮</li>
+        <li>中间：消息列表（流式呈现 AI 回复）</li>
+        <li>底部：文字输入框 + 发送按钮</li>
+        <li>整个面板可拖拽移动</li>
+      </ul>
+    </div>
+  </div>
+  <div class="option" onclick="toggleSelect(this)" data-choice="decision" style="width:100%;">
+    <div class="letter">📋</div>
+    <div class="content">
+      <h3>年度决策表单</h3>
+      <p>每年开始弹出决策面板，包含：</p>
+      <ul>
+        <li>研发投入（滑块：低/中/高）</li>
+        <li>产能建设（选择建哪种生产线）</li>
+        <li>营销预算（数字输入）</li>
+        <li>融资方案（股权/债权/混合）</li>
+        <li>产品定价（调整各产品单价）</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<h3>这样设计你觉得对吗？</h3>
+<p class="subtitle">下一步我会细化：Rust API 对接方案、Godot 文件结构、各场景的 GDScript 设计</p>

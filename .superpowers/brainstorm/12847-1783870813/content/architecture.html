@@ -1,0 +1,101 @@
+<h2>架构方案对比</h2>
+<p class="subtitle">从 Next.js → Godot，后端 Rust API 不变</p>
+
+<div class="section">
+  <h3>当前架构</h3>
+  <div style="display:flex; align-items:center; justify-content:center; gap:12px; padding:16px; border:1px solid var(--border); border-radius:8px;">
+    <div class="placeholder" style="padding:12px;">🌐 浏览器</div>
+    <span>→</span>
+    <div class="placeholder" style="padding:12px;">Next.js 前端<br><small>(React 组件)</small></div>
+    <span>→</span>
+    <div class="placeholder" style="padding:12px;">Rust API<br><small>Axum HTTP · 3001</small></div>
+  </div>
+  <p class="subtitle">Next.js 负责：页面渲染 / 路由 / API 代理 / 状态管理</p>
+</div>
+
+<div class="section">
+  <h3>目标架构</h3>
+  <div style="display:flex; align-items:center; justify-content:center; gap:12px; padding:16px; border:1px solid var(--accent); border-radius:8px; background:var(--accent-bg);">
+    <div class="placeholder" style="padding:12px;">🕹️ Godot 游戏<br><small>(桌面/Web/移动端)</small></div>
+    <span>↔ HTTP REST / WebSocket</span>
+    <div class="placeholder" style="padding:12px;">Rust API<br><small>Axum HTTP · 不变</small></div>
+  </div>
+  <p class="subtitle">Godot 负责：3D 场景渲染 / 游戏逻辑 / 输入处理 / 音效</p>
+</div>
+
+<hr>
+
+<h2>技术可行性评估</h2>
+
+<div class="options" style="flex-direction:column;">
+  <div class="option" onclick="toggleSelect(this)" data-choice="1" style="width:100%;">
+    <div class="letter">✅</div>
+    <div class="content">
+      <h3>REST API 通信</h3>
+      <p>Godot 内置 HTTPRequest 节点，直接调 Rust API 的 JSON 接口。数据格式完全复用现有模型。难度：<strong>低</strong></p>
+    </div>
+  </div>
+  <div class="option" onclick="toggleSelect(this)" data-choice="2" style="width:100%;">
+    <div class="letter">✅</div>
+    <div class="content">
+      <h3>WebSocket 实时流</h3>
+      <p>AI 回复需要流式传输（SSE/WebSocket）。Godot 内置 WebSocket 客户端，可对接 Rust 的 ws 端点。难度：<strong>中</strong></p>
+    </div>
+  </div>
+  <div class="option" onclick="toggleSelect(this)" data-choice="3" style="width:100%;">
+    <div class="letter">⚠️</div>
+    <div class="content">
+      <h3>3D 法庭/场景渲染</h3>
+      <p>Godot 的强项。需要建模（法庭、会议室、商业沙盘桌）。可买现成 3D 模型或简单几何体起步。难度：<strong>中（美术工作量）</strong></p>
+    </div>
+  </div>
+  <div class="option" onclick="toggleSelect(this)" data-choice="4" style="width:100%;">
+    <div class="letter">✅</div>
+    <div class="content">
+      <h3>用户认证与会话</h3>
+      <p>完全由 Rust 后端管理，Godot 只需存 token。无额外复杂度。难度：<strong>低</strong></p>
+    </div>
+  </div>
+  <div class="option" onclick="toggleSelect(this)" data-choice="5" style="width:100%;">
+    <div class="letter">⚠️</div>
+    <div class="content">
+      <h3>多人同庭（可选）</h3>
+      <p>Godot 内置多人游戏支持（ENet/WebSocket）。如需多人实时参与同一庭审，需后端新增中继逻辑。难度：<strong>中-高</strong></p>
+    </div>
+  </div>
+  <div class="option" onclick="toggleSelect(this)" data-choice="6" style="width:100%;">
+    <div class="letter">✅</div>
+    <div class="content">
+      <h3>跨平台发布</h3>
+      <p>Godot 一次开发 → 导出 Windows / Mac / Linux / Web / Android / iOS。Web 版可替代现有网站。难度：<strong>低</strong></p>
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<h2>关键问题需要讨论</h2>
+
+<div class="options">
+  <div class="option" onclick="toggleSelect(this)" data-choice="a">
+    <div class="letter">Q1</div>
+    <div class="content">
+      <h3>第一步做什么？</h3>
+      <p>先做"游戏广场"大厅（3D 场景），还是先移植一个具体游戏（如仲裁庭）到 Godot？</p>
+    </div>
+  </div>
+  <div class="option" onclick="toggleSelect(this)" data-choice="b">
+    <div class="letter">Q2</div>
+    <div class="content">
+      <h3>AI 对话交互方式</h3>
+      <p>文字输入框（现有方式）→ 3D 场景里怎么做？NPC 头顶气泡？弹窗 UI？语音输入？</p>
+    </div>
+  </div>
+  <div class="option" onclick="toggleSelect(this)" data-choice="c">
+    <div class="letter">Q3</div>
+    <div class="content">
+      <h3>Godot 版本</h3>
+      <p>Godot 4.x（最新稳定版）？有无 GDScript 或 C# 偏好？</p>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,164 @@
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#d0d4e0; display:flex; justify-content:center; padding:20px; font-family:-apple-system, sans-serif; }
+.game-screen { width:900px; background:#e8ecf4; border-radius:12px; overflow:hidden; box-shadow:0 4px 20px rgba(0,0,0,.15); }
+/* Top Bar */
+.topbar { background:linear-gradient(180deg, #dfe3ee 0%, #c8cde0 100%); padding:12px 20px; display:flex; align-items:center; gap:16px; border-bottom:1px solid #bcc1d4; }
+.topbar .title { font-size:18px; font-weight:800; color:#2a2a40; }
+.topbar .divider { color:#99a0b8; }
+.topbar .stat { font-size:13px; color:#4a5070; }
+.topbar .cash { background:#4a6cf7; color:white; padding:4px 14px; border-radius:14px; font-weight:700; font-size:14px; }
+/* Body */
+.body { display:flex; gap:10px; padding:10px; }
+/* Left */
+.left-panel { width:175px; display:flex; flex-direction:column; gap:8px; }
+.panel { background:white; border-radius:8px; padding:12px; border:1px solid #d5dae8; }
+.panel .h { font-weight:700; font-size:13px; margin-bottom:8px; color:#2a2a40; padding-bottom:6px; border-bottom:1px solid #eef0f6; }
+.panel .row { display:flex; align-items:center; gap:6px; margin:4px 0; font-size:12px; }
+.panel .row .dot { width:8px; height:8px; border-radius:50%; }
+.panel .row .green { background:#4caf50; }
+.panel .row .gray { background:#ccc; }
+.panel .row .muted { color:#999; }
+.panel input { width:50px; border:1px solid #d0d4e0; border-radius:4px; padding:4px 6px; font-size:12px; }
+.panel button { background:#4a6cf7; color:white; border:none; border-radius:4px; padding:4px 10px; font-size:11px; cursor:pointer; font-weight:600; }
+/* Center */
+.center { flex:1; display:flex; flex-direction:column; gap:8px; }
+.factory-panel { background:white; border-radius:8px; padding:12px; border:1px solid #d5dae8; }
+.factory-panel .h { font-weight:700; font-size:14px; color:#2a2a40; margin-bottom:10px; }
+.lines-grid { display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:10px; }
+.line-card { border-radius:8px; padding:10px; text-align:center; }
+.line-card.active { border:2px solid #e94560; background:#fff5f5; }
+.line-card.building { border:2px solid #0f3460; background:#f5f8ff; }
+.line-card.switching { border:2px solid #f5c518; background:#fffef5; }
+.line-card.empty { border:2px dashed #d5dae8; background:#fafbfd; opacity:0.6; }
+.line-card .type { font-size:10px; color:#888; }
+.line-card .emoji { font-size:22px; margin:4px 0; }
+.line-card .product { font-size:11px; font-weight:700; }
+.line-card .bar-bg { background:#e8ecf4; border-radius:3px; height:10px; margin:6px 0 2px; overflow:hidden; }
+.line-card .bar-fill { height:100%; border-radius:3px; }
+.line-card .bar-fill.red { background:#e94560; }
+.line-card .bar-fill.blue { background:#0f3460; }
+.line-card .bar-fill.gold { background:#f5c518; }
+.line-card .status { font-size:9px; color:#888; margin-top:2px; }
+/* Right */
+.right-panel { width:175px; display:flex; flex-direction:column; gap:8px; }
+.link { color:#4a6cf7; font-size:12px; cursor:pointer; margin:2px 0; }
+.link.red { color:#e94560; }
+.bank-slot { display:inline-block; width:32px; height:32px; border:1px solid #d5dae8; border-radius:4px; margin:1px; text-align:center; font-size:7px; vertical-align:top; color:#999; }
+.bank-slot.active { background:#4caf50; color:white; font-weight:600; }
+/* Bottom */
+.bottom-bar { background:linear-gradient(180deg, #dfe3ee 0%, #c8cde0 100%); padding:10px 20px; display:flex; gap:8px; align-items:center; border-top:1px solid #bcc1d4; }
+.bottom-bar .btn { padding:8px 18px; border-radius:6px; font-size:13px; font-weight:600; cursor:pointer; border:1px solid #d0d4e0; background:white; color:#4a5070; }
+.bottom-bar .btn.primary { background:#4a6cf7; color:white; border:none; }
+.bottom-bar .phase { font-size:11px; color:#99a0b8; }
+</style>
+<div class="game-screen">
+  <!-- Top Bar -->
+  <div class="topbar">
+    <span class="title">🏢 创业沙盘</span>
+    <span class="divider">│</span>
+    <span class="stat">📅 第 1 年</span>
+    <span class="stat">🕐 Q1</span>
+    <span style="flex:1"></span>
+    <span class="cash">💰 12M</span>
+    <span class="stat">📊 总资产 70M</span>
+    <span class="stat">🏆 排名 #1</span>
+  </div>
+
+  <!-- Body -->
+  <div class="body">
+    <!-- Left Panel -->
+    <div class="left-panel">
+      <div class="panel">
+        <div class="h">📈 市场状态</div>
+        <div class="row"><span class="dot green"></span> 平城 #1</div>
+        <div class="row"><span class="dot gray"></span> <span class="muted">南城</span></div>
+        <div class="row"><span class="dot gray"></span> <span class="muted">北城</span></div>
+        <div class="row"><span class="dot gray"></span> <span class="muted">东城</span></div>
+        <div class="row"><span class="dot gray"></span> <span class="muted">西城</span></div>
+        <div style="margin-top:8px;font-size:11px;color:#888;">营销投入（M）</div>
+        <div style="display:flex;gap:4px;align-items:center;margin-top:2px;">
+          <input value="2"><span style="font-size:11px;">M</span>
+          <button>提交</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Center - Factory View -->
+    <div class="center">
+      <div class="factory-panel">
+        <div class="h">🏭 老工厂 (容量 4)</div>
+        <div class="lines-grid">
+          <div class="line-card active">
+            <div class="type">#1 手工线</div>
+            <div class="emoji">🐴</div>
+            <div class="product" style="color:#e94560">奔马</div>
+            <div class="bar-bg"><div class="bar-fill red" style="width:60%"></div></div>
+            <div class="status">生产中 · 60%</div>
+          </div>
+          <div class="line-card building">
+            <div class="type">#2 半自动</div>
+            <div class="emoji">🔧</div>
+            <div class="product" style="color:#0f3460">建设中</div>
+            <div class="bar-bg"><div class="bar-fill blue" style="width:25%"></div></div>
+            <div class="status">建设 · 1/4 季度</div>
+          </div>
+          <div class="line-card switching">
+            <div class="type">#3 全自动</div>
+            <div class="emoji">🦅</div>
+            <div class="product" style="color:#f5c518">飞鹰</div>
+            <div class="bar-bg"><div class="bar-fill gold" style="width:80%"></div></div>
+            <div class="status">转产中 · 80%</div>
+          </div>
+          <div class="line-card empty">
+            <div class="type">#4 空闲</div>
+            <div class="emoji">—</div>
+            <div class="product">未配置</div>
+            <div class="bar-bg"><div class="bar-fill" style="width:0%"></div></div>
+            <div class="status">空闲</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Panel -->
+    <div class="right-panel">
+      <div class="panel">
+        <div class="h">📦 库存</div>
+        <div class="row" style="font-size:12px;">原料: <b>8 个</b></div>
+        <div class="row" style="font-size:12px;">在制: <b>2 批</b></div>
+        <div class="row" style="font-size:12px;">🐴 奔马: <b>x4</b></div>
+        <div class="row" style="font-size:12px;">应收: <b>12M</b> (2Q)</div>
+      </div>
+      <div class="panel">
+        <div class="h">💳 财务</div>
+        <div class="row" style="font-size:12px;">长贷额度</div>
+        <div style="margin:4px 0;">
+          <span class="bank-slot">1年</span>
+          <span class="bank-slot">2年</span>
+          <span class="bank-slot">3年</span>
+          <span class="bank-slot">4年</span>
+        </div>
+        <div class="row" style="font-size:12px;">短贷额度</div>
+        <div style="margin:4px 0;">
+          <span class="bank-slot active">20M</span>
+          <span class="bank-slot">Q2</span>
+          <span class="bank-slot">Q3</span>
+          <span class="bank-slot">Q4</span>
+        </div>
+        <div class="link" style="margin-top:6px;">💳 申请贷款 20M</div>
+        <div class="link red">💰 贴现应收款</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bottom Bar -->
+  <div class="bottom-bar">
+    <button class="btn primary">▶ 执行下一季度</button>
+    <button class="btn">📊 年报</button>
+    <button class="btn">📋 订货会</button>
+    <button class="btn">🏗️ 工厂</button>
+    <span style="flex:1"></span>
+    <span class="phase">第 1 节 · 适应期 (第 1-4 年)</span>
+  </div>
+</div>

@@ -1,0 +1,93 @@
+<h2>设计 — 整体架构</h2>
+<p class="subtitle">商业沙盘推演 · Godot 实现方案</p>
+
+<h3>1. 系统架构</h3>
+<div style="text-align:center;padding:16px;border:1px solid var(--border);border-radius:8px;background:var(--bg);">
+  <pre style="font-size:13px;line-height:1.6;text-align:left;margin:0 auto;display:inline-block;">
+┌─────────────────────────────────────────────────┐
+│  🌐 浏览器 / 🖥️ 桌面应用                         │
+│  ┌───────────────────────────────────────────┐  │
+│  │  🕹️ Godot 游戏 (WebAssembly / 原生)       │  │
+│  │                                            │  │
+│  │  ┌──────────┐  ┌──────────────────────┐   │  │
+│  │  │ 游戏广场  │  │  商业沙盘 (场景)      │   │  │
+│  │  │ (大厅)    │→│  ┌────────────────┐  │   │  │
+│  │  │ ⏳后做    │  │  │ 董事会会议室(3D) │  │   │  │
+│  │  └──────────┘  │  │ 数据看板(屏幕)   │  │   │  │
+│  │                 │  │ AI弹窗对话系统   │  │   │  │
+│  │                 │  │ 决策表单界面     │  │   │  │
+│  │                 │  └────────────────┘  │   │  │
+│  │                 └──────────────────────┘   │  │
+│  └───────────────────────────────────────────┘  │
+│                          ↕ HTTP REST / WebSocket │
+│                   ┌─────────────────────────┐   │
+│                   │  Rust API (不变)         │   │
+│                   │  AI网关 · 会话管理 ·    │   │
+│                   │  知识库 · Soul 注册表    │   │
+│                   └─────────────────────────┘   │
+└─────────────────────────────────────────────────┘
+  </pre>
+</div>
+
+<div class="section">
+  <h3>2. 商业沙盘 — Godot 场景结构</h3>
+</div>
+
+<div class="cards">
+  <div class="card" onclick="toggleSelect(this)" data-choice="boardroom">
+    <div class="card-body">
+      <h4>🏛️ BoardRoom（主场景）</h4>
+      <p>3D 董事会会议室：椭圆会议桌、AI 角色座位、数据大屏、决策终端</p>
+    </div>
+  </div>
+  <div class="card" onclick="toggleSelect(this)" data-choice="popup">
+    <div class="card-body">
+      <h4>💬 ChatPopup（弹窗系统）</h4>
+      <p>点击 AI 角色弹出对话窗：文字输入、流式回复、历史记录</p>
+    </div>
+  </div>
+  <div class="card" onclick="toggleSelect(this)" data-choice="dashboard">
+    <div class="card-body">
+      <h4>📊 Dashboard（数据看板）</h4>
+      <p>3D 场景中的屏幕/投影：显示财务报表、市场份额、KPI 图表</p>
+    </div>
+  </div>
+  <div class="card" onclick="toggleSelect(this)" data-choice="decision">
+    <div class="card-body">
+      <h4>📋 DecisionForm（决策表单）</h4>
+      <p>年度经营决策界面：研发投入、产能配置、定价策略、融资方案</p>
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<h3>3. 游戏流程</h3>
+
+<div style="display:flex;flex-direction:column;gap:8px;padding:16px;background:var(--bg);border-radius:8px;border:1px solid var(--border);">
+  <div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--accent-bg);border-radius:6px;">
+    <span style="background:var(--accent);color:var(--bg);border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px;">1</span>
+    <span><strong>进入沙盘</strong> — 用户进入董事会会议室，AI 角色已在座位</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;padding:8px;border-radius:6px;">
+    <span style="background:var(--muted);color:var(--fg);border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px;">2</span>
+    <span><strong>AI 汇报</strong> — CEO 汇总上年度经营情况，弹出数据看板</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--accent-bg);border-radius:6px;">
+    <span style="background:var(--accent);color:var(--bg);border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px;">3</span>
+    <span><strong>经营决策</strong> — 弹出决策表单，用户填写本年度各项经营参数</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;padding:8px;border-radius:6px;">
+    <span style="background:var(--muted);color:var(--fg);border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px;">4</span>
+    <span><strong>AI 讨论</strong> — 各角色收到数据后，各自生成分析意见（流式弹窗）</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:8px;padding:8px;background:var(--accent-bg);border-radius:6px;">
+    <span style="background:var(--accent);color:var(--bg);border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px;">5</span>
+    <span><strong>综合报告</strong> — AI 综合各方意见输出年度经营报告，进入下一轮</span>
+  </div>
+</div>
+
+<hr>
+
+<h3>这样设计你觉得合理吗？</h3>
+<p class="subtitle">接下来我会细化每个模块的设计。</p>
