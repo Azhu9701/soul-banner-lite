@@ -12,6 +12,7 @@ use tokio::sync::mpsc;
 use tokio::sync::Mutex as AsyncMutex;
 
 use crate::collector::SoulCollector;
+use crate::searxng_cache::SearxngCache;
 
 use crate::business_sandbox::engine::GameManager;
 
@@ -79,4 +80,5 @@ pub struct AppState {
     pub preferred_provider: Arc<RwLock<Option<foundation::Provider>>>,
     pub api_token: Option<String>,
     pub business_sandbox: Arc<BusinessSandboxState>,
+    pub searxng_cache: Arc<SearxngCache>,
 }

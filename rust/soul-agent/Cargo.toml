@@ -1,0 +1,19 @@
+[package]
+name = "soul-agent"
+version = "0.1.0"
+edition = "2021"
+description = "Soul Agent — multi-agent AI orchestration SDK and HTTP service."
+
+[lib]
+name = "soul_agent"
+path = "src/lib.rs"
+
+[dependencies]
+possession = { path = "../possession" }
+ai-gateway = { path = "../ai-gateway" }
+foundation = { path = "../foundation" }
+registry = { path = "../registry" }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["full"] }
+serde_json = { workspace = true }
