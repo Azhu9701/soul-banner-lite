@@ -129,7 +129,7 @@ function RefinePage() {
 
       <div className="flex gap-2">
         <Button variant="outline" onClick={() => setRefined(null)}>重新炼化</Button>
-        <Link to="/souls/$name" params={{ name: encodeURIComponent(profile.name) }} className="flex-1">
+        <Link to={`/souls/${encodeURIComponent(profile.name)}` as any} className="flex-1">
           <Button className="w-full" data-testid="view-soul-btn">
             <Check className="h-4 w-4 mr-1" /> 查看角色详情
           </Button>

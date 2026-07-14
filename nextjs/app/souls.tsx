@@ -1,4 +1,4 @@
-import { createFileRoute, Link, Outlet, useLocation } from '@tanstack/react-router'
+import { createFileRoute, Link } from '@tanstack/react-router'
 import { useEffect, useState } from "react"
 import { fetchSouls, type SoulListEntry } from "@/lib/api"
 import { SoulCardGrid } from "@/components/soul-card-grid"
@@ -8,19 +8,8 @@ import { Button } from "@/components/ui/button"
 import { Search, Wand2 } from "lucide-react"
 
 export const Route = createFileRoute('/souls')({
-  component: SoulsLayout,
+  component: SoulListPage,
 })
-
-function SoulsLayout() {
-  const location = useLocation()
-  const isChildRoute = location.pathname !== '/souls'
-
-  if (isChildRoute) {
-    return <Outlet />
-  }
-
-  return <SoulListPage />
-}
 
 function SoulListPage() {
   const [souls, setSouls] = useState<SoulListEntry[]>([])

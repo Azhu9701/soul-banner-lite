@@ -247,8 +247,7 @@ export function SessionRunner({ sessionId, mode, matchedSouls, taskTitle, onDone
           </span>
           {(status === "done" || (status === "streaming" && synthesis)) && (
             <Link
-              to="/sessions/$id"
-              params={{ id: sessionId }}
+              to={`/sessions/${sessionId}` as any}
               className="text-xs text-green-600 dark:text-green-400 hover:text-green-800 dark:hover:text-green-200 underline underline-offset-2 transition-colors"
             >
               查看会话 →
@@ -288,8 +287,7 @@ export function SessionRunner({ sessionId, mode, matchedSouls, taskTitle, onDone
         <div className="border-t p-4 space-y-6">
           <div className="flex flex-col items-center gap-3 py-6 text-center">
             <Link
-              to="/sessions/$id"
-              params={{ id: sessionId }}
+              to={`/sessions/${sessionId}` as any}
               className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
             >
               <ArrowRight className="h-4 w-4" />

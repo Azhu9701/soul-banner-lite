@@ -9,8 +9,7 @@ interface SummonButtonProps {
 export function SummonButton({ soulName }: SummonButtonProps) {
   return (
     <Link
-      to="/possess"
-      search={{ preset: 'single', souls: encodeURIComponent(soulName) }}
+      to={`/possess?preset=single&souls=${encodeURIComponent(soulName)}` as any}
       data-testid={`summon-btn-${soulName}`}
     >
       <Button size="sm">

@@ -108,7 +108,7 @@ build_backend() {
 }
 
 build_frontend() {
-    log_info "构建前端..."
+    log_info "构建 Next.js 前端..."
     cd "$SCRIPT_DIR/nextjs"
     pnpm install
     pnpm build
@@ -163,7 +163,7 @@ done
 # Start Frontend
 echo "[2/2] 启动前端..."
 cd "$DIR/nextjs"
-VITE_API_URL="http://${LAN_IP:-127.0.0.1}:3096/api/v1" pnpm start 2>&1 | sed 's/^|[WEB] /' &
+NEXT_PUBLIC_API_URL="http://${LAN_IP:-127.0.0.1}:3096/api/v1" pnpm start 2>&1 | sed 's/^|[WEB] /' &
 FRONT_PID=$!
 sleep 3
 

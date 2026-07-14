@@ -36,8 +36,8 @@ jobs:
         working-directory: ./rust
         continue-on-error: true
 
-  frontend:
-    name: TanStack Start Frontend
+  nextjs:
+    name: Next.js Frontend
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -45,7 +45,7 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
