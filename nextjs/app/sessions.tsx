@@ -1,14 +1,25 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Outlet, useLocation } from '@tanstack/react-router'
 import { useEffect, useState } from "react"
 import { fetchSessions, type SessionSummary } from "@/lib/api"
 import { SessionTimeline } from "@/components/session-timeline"
 import { Skeleton } from "@/components/ui/skeleton"
 
 export const Route = createFileRoute('/sessions')({
-  component: SessionsPage,
+  component: SessionsLayout,
 })
 
-function SessionsPage() {
+function SessionsLayout() {
+  const location = useLocation()
+  const isChildRoute = location.pathname !== '/sessions'
+
+  if (isChildRoute) {
+    return <Outlet />
+  }
+
+  return <SessionsListPage />
+}
+
+function SessionsListPage() {
   const [sessions, setSessions] = useState<SessionSummary[]>([])
   const [loading, setLoading] = useState(true)
 
