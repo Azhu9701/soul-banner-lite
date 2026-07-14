@@ -8,6 +8,7 @@ use ui::draw;
 
 use std::io;
 use std::sync::Arc;
+use std::time::Duration;
 
 use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen};
@@ -193,33 +194,7 @@ pub async fn run(
         }
     }
 
-    // ── Phase: Loading ──
-    terminal.draw(|f| {
-        let area = f.area();
-        let chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([Constraint::Length(3), Constraint::Min(3)])
-            .split(area);
-
-        f.render_widget(
-            Paragraph::new("🧠 Soul Agent")
-                .block(Block::default().borders(Borders::ALL).style(Style::default().fg(Color::Cyan))),
-            chunks[0],
-        );
-
-        let msg = format!(
-            "正在召唤 {} ...\n\n问题: {}\n\n⏳ 请稍候，AI 正在分析和回应...",
-            selected.join("、"), task_input
-        );
-        f.render_widget(
-            Paragraph::new(Text::from(msg))
-                .block(Block::default().borders(Borders::ALL).title(" 运行中 "))
-                .style(Style::default().fg(Color::Yellow)),
-            chunks[1],
-        );
-    })?;
-
-    // Start session
+    // ── Streaming Phase: render as tokens arrive ──
     let (tx, mut rx) = tokio::sync::mpsc::channel::<WsEvent>(256);
     let input = PossessionInput {
         task: task_input.clone(),
@@ -232,60 +207,75 @@ pub async fn run(
 
     engine.start_possession(input, tx).await?;
 
-    let mut events: Vec<WsEvent> = Vec::new();
-    while let Some(event) = rx.recv().await {
-        events.push(event);
-    }
-
-    // ── Phase: Results ──
-    let mut app = App::new(task_input, selected, mode.clone(), events);
+    let mut app = App::new(task_input.clone(), selected.clone(), mode.clone(), vec![]);
 
     loop {
+        // Redraw current state
         terminal.draw(|f| draw(f, &mut app))?;
 
-        if let Event::Key(key) = event::read()? {
-            if key.kind == KeyEventKind::Press {
-                if app.follow_up_active {
-                    match key.code {
-                        KeyCode::Esc => app.toggle_follow_up(),
-                        KeyCode::Enter => {
-                            let question = app.follow_up_input.clone();
-                            if !question.is_empty() {
-                                app.toggle_follow_up();
-                                // Run follow-up session
-                                let (tx2, mut rx2) = tokio::sync::mpsc::channel::<WsEvent>(256);
-                                let input2 = PossessionInput {
-                                    task: question,
-                                    souls: app.souls.clone(),
-                                    mode: mode_enum.clone(),
-                                    topic: None, judgment: None, worry: None, unknown: None,
-                                    interrogation_context: None, search_topic: false, search_results: None,
-                                    task_cards: Default::default(),
-                                };
-                                if engine.start_possession(input2, tx2).await.is_ok() {
-                                    let mut new_events = Vec::new();
-                                    while let Some(event) = rx2.recv().await {
-                                        new_events.push(event);
+        // Wait for either an event or keyboard input
+        if let Ok(has_key) = crossterm::event::poll(Duration::from_millis(100)) {
+            if has_key {
+                if let Ok(Event::Key(key)) = event::read() {
+                    if key.kind == KeyEventKind::Press {
+                        if app.follow_up_active {
+                            match key.code {
+                                KeyCode::Esc => app.toggle_follow_up(),
+                                KeyCode::Enter => {
+                                    let question = app.follow_up_input.clone();
+                                    if !question.is_empty() {
+                                        app.toggle_follow_up();
+                                        break; // Will restart with follow-up
                                     }
-                                    app = App::new(app.task.clone(), app.souls.clone(), app.mode.clone(), new_events);
                                 }
+                                KeyCode::Char(c) => app.follow_up_push(c),
+                                KeyCode::Backspace => app.follow_up_pop(),
+                                _ => {}
+                            }
+                        } else {
+                            match key.code {
+                                KeyCode::Char('q') => break,
+                                KeyCode::Char('/') => app.toggle_follow_up(),
+                                KeyCode::Tab => app.next_tab(),
+                                KeyCode::BackTab => app.prev_tab(),
+                                KeyCode::Up => app.scroll_up(),
+                                KeyCode::Down => app.scroll_down(),
+                                _ => {}
                             }
                         }
-                        KeyCode::Char(c) => app.follow_up_push(c),
-                        KeyCode::Backspace => app.follow_up_pop(),
-                        _ => {}
-                    }
-                } else {
-                    match key.code {
-                        KeyCode::Char('q') => break,
-                        KeyCode::Char('/') => app.toggle_follow_up(),
-                        KeyCode::Tab => app.next_tab(),
-                        KeyCode::BackTab => app.prev_tab(),
-                        KeyCode::Up => app.scroll_up(),
-                        KeyCode::Down => app.scroll_down(),
-                        _ => {}
                     }
                 }
+            }
+        }
+
+        // Try to receive events
+        match rx.try_recv() {
+            Ok(event) => {
+                let is_complete = matches!(event.event_type, possession::WsEventType::SessionComplete);
+                app.events.push(event);
+                if is_complete {
+                    // Session done — show final state then continue loop for interaction
+                    continue;
+                }
+            }
+            Err(tokio::sync::mpsc::error::TryRecvError::Empty) => {
+                // No event yet, continue polling
+                continue;
+            }
+            Err(tokio::sync::mpsc::error::TryRecvError::Disconnected) => {
+                // Channel closed, session complete
+                // Add a synthetic SessionComplete if not already present
+                if !app.events.iter().any(|e| matches!(e.event_type, possession::WsEventType::SessionComplete)) {
+                    app.events.push(WsEvent {
+                        event_type: possession::WsEventType::SessionComplete,
+                        payload: String::new(),
+                        reasoning_content: None,
+                        soul_name: None,
+                        seq: 0,
+                    });
+                }
+                // Continue loop to let user browse
+                continue;
             }
         }
     }
