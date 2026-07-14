@@ -165,9 +165,12 @@ export function SidebarSessions() {
                   >
                     {s.observation_count > 0 && s.observation_count}
                   </span>
-                  <Link
-                    to="/sessions/$id"
-                    params={{ id: s.id }}
+                  <a
+                    href={`/sessions/${s.id}`}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      navigate({ to: "/sessions/$id", params: { id: s.id } })
+                    }}
                     data-testid={`sidebar-session-${s.id}`}
                     className={cn(
                       "flex-1 min-w-0 truncate",
@@ -177,7 +180,7 @@ export function SidebarSessions() {
                     )}
                   >
                     {s.title}
-                  </Link>
+                  </a>
                   <span className="text-[10px] text-muted-foreground/50 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                     {modeLabel(s.mode)}
                   </span>
