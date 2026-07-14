@@ -162,7 +162,7 @@ pub async fn run(
     let input = PossessionInput {
         task: task_input.clone(),
         souls: selected.clone(),
-        mode: mode_enum,
+        mode: mode_enum.clone(),
         topic: None, judgment: None, worry: None, unknown: None,
         interrogation_context: None, search_topic: false, search_results: None,
         task_cards: Default::default(),
@@ -176,22 +176,55 @@ pub async fn run(
     }
 
     // ── Phase: Results ──
-    let mut app = App::new(task_input, selected, mode, events);
+    let mut app = App::new(task_input, selected, mode.clone(), events);
 
     loop {
         terminal.draw(|f| draw(f, &mut app))?;
 
         if let Event::Key(key) = event::read()? {
             if key.kind == KeyEventKind::Press {
-                match key.code {
-                    KeyCode::Char('q') | KeyCode::Esc => break,
-                    KeyCode::Tab => app.next_tab(),
-                    KeyCode::BackTab => app.prev_tab(),
-                    KeyCode::Up => app.scroll_up(),
-                    KeyCode::Down => app.scroll_down(),
-                    KeyCode::Left => app.prev_round(),
-                    KeyCode::Right => app.next_round(),
-                    _ => {}
+                if app.follow_up_active {
+                    match key.code {
+                        KeyCode::Esc => app.toggle_follow_up(),
+                        KeyCode::Enter => {
+                            let question = app.follow_up_input.clone();
+                            if !question.is_empty() {
+                                app.toggle_follow_up();
+                                // Run follow-up session
+                                let (tx2, mut rx2) = tokio::sync::mpsc::channel::<WsEvent>(256);
+                                let input2 = PossessionInput {
+                                    task: question,
+                                    souls: app.souls.clone(),
+                                    mode: mode_enum.clone(),
+                                    topic: None, judgment: None, worry: None, unknown: None,
+                                    interrogation_context: None, search_topic: false, search_results: None,
+                                    task_cards: Default::default(),
+                                };
+                                if engine.start_possession(input2, tx2).await.is_ok() {
+                                    let mut new_events = Vec::new();
+                                    while let Some(event) = rx2.recv().await {
+                                        new_events.push(event);
+                                    }
+                                    app = App::new(app.task.clone(), app.souls.clone(), app.mode.clone(), new_events);
+                                }
+                            }
+                        }
+                        KeyCode::Char(c) => app.follow_up_push(c),
+                        KeyCode::Backspace => app.follow_up_pop(),
+                        _ => {}
+                    }
+                } else {
+                    match key.code {
+                        KeyCode::Char('q') => break,
+                        KeyCode::Char('/') => app.toggle_follow_up(),
+                        KeyCode::Tab => app.next_tab(),
+                        KeyCode::BackTab => app.prev_tab(),
+                        KeyCode::Up => app.scroll_up(),
+                        KeyCode::Down => app.scroll_down(),
+                        KeyCode::Left => app.prev_round(),
+                        KeyCode::Right => app.next_round(),
+                        _ => {}
+                    }
                 }
             }
         }
