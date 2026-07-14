@@ -154,11 +154,12 @@ pub async fn run(
         let prompt = req.prompt.clone();
         let config = req.config.clone();
         let detector = cross_detector.clone();
+        let tx = system_tx.clone();
         set.spawn(async move {
             run_soul_with_tools(
                 &gw, &provider, &prompt, &config,
                 &s_id, &soul_name, &ws_c, &tr,
-                detector,
+                detector, &tx,
             ).await
         });
     }
@@ -182,7 +183,7 @@ pub async fn run(
         acc
     };
 
-    let outputs = match tokio::time::timeout(Duration::from_secs(SOUL_TIMEOUT_SECS), collect).await {
+    let mut outputs = match tokio::time::timeout(Duration::from_secs(SOUL_TIMEOUT_SECS), collect).await {
         Ok(acc) => {
             set.abort_all();
             acc
@@ -216,6 +217,171 @@ pub async fn run(
             tracing::error!("Failed to finalize {} output: {}", output.soul_name, e);
         }
     }
+
+    // ── 多轮碰撞注入（CrossDetector → Soul 第二轮/第三轮回应）──
+    let max_rounds: u32 = 3;
+    let mut prev_collisions: Vec<crate::cross_detector::CollisionEvent> = vec![];
+
+    for round in 1..max_rounds {
+        // 以所有已产生的输出为检测源
+        let outputs_for_detection = &outputs;
+        let mut detector = CrossDetector::new();
+        for o in outputs_for_detection {
+            detector.register_soul(o.soul_name.clone());
+            if !o.content.is_empty() {
+                // 把完整输出喂入检测器
+                for token in o.content.split_inclusive(|_| true) {
+                    detector.add_token(&o.soul_name, token);
+                }
+            }
+        }
+        let new_collisions = detector.detect_collisions();
+
+        // 过滤掉和上一轮重复的碰撞
+        let fresh_collisions: Vec<_> = new_collisions.iter()
+            .filter(|c| !prev_collisions.iter().any(|pc|
+                pc.from_soul == c.from_soul && pc.to_soul == c.to_soul && pc.collision_type == c.collision_type
+            ))
+            .cloned()
+            .collect();
+
+        if fresh_collisions.is_empty() {
+            tracing::info!("Round {}: no new collisions, stopping multi-round", round + 1);
+            break;
+        }
+
+        tracing::info!(
+            "Round {}: {} new collisions detected, injecting into soul prompts",
+            round + 1,
+            fresh_collisions.len()
+        );
+
+        // 构建每个 Soul 的碰撞上下文
+        let mut collision_context: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
+        for c in &fresh_collisions {
+            collision_context.entry(c.to_soul.clone())
+                .or_default()
+                .push(format!("**{}** 说：{}", c.from_soul, c.content));
+        }
+
+        // 为被碰撞的 Soul 构建第二轮 prompt
+        let mut round_requests: Vec<(String, LLMRequest)> = vec![];
+        let output_map: std::collections::HashMap<String, &SoulOutput> = outputs.iter()
+            .map(|o| (o.soul_name.clone(), o))
+            .collect();
+
+        for (soul_name, contexts) in &collision_context {
+            if let Some(output) = output_map.get(soul_name) {
+                if let Ok(profile) = registry.get_soul(soul_name) {
+                    let provider = gateway.pick_provider().unwrap_or(foundation::Provider::DeepSeek);
+                    let config = CallConfig::default().with_reasoning_effort(ReasoningEffort::Think);
+                    let tier = foundation::ModelTier::for_provider(&provider, config.model.as_deref().unwrap_or("unknown"));
+
+                    // 附加碰撞上下文到原始 prompt
+                    let base_prompt = prompt_builder.build_summon_prompt(
+                        &profile, &task_arc,
+                        presets.judgment.as_deref(),
+                        presets.worry.as_deref(),
+                        presets.unknown.as_deref(),
+                        tier,
+                        presets.search_results.as_deref(),
+                        presets.interrogation_context.as_deref(),
+                    );
+                    let mut messages = base_prompt.messages.clone();
+
+                    let context_str = contexts.join("\n\n");
+                    let injection = format!(
+                        "\n\n---\n## ⚡ 其他角色的交叉质证\n\n{}\n\n请你针对以下观点做出回应——特别是你不同意或需要补充的部分：\n",
+                        context_str
+                    );
+                    messages.push(PromptMessage {
+                        role: "user".into(),
+                        content: injection,
+                        reasoning_content: None,
+                        tool_calls: None,
+                        tool_call_id: None,
+                    });
+
+                    let _ = system_tx.try_send(WsEvent {
+                        event_type: WsEventType::ProcessStep,
+                        payload: format!("⚡ {} 收到来自 {:#?} 的交叉质证，正在生成回应...", soul_name, contexts.len()),
+                        reasoning_content: None,
+                        soul_name: Some(soul_name.clone()),
+                        seq: 0,
+                    }).ok();
+
+                    round_requests.push((soul_name.clone(), LLMRequest {
+                        provider: provider.clone(),
+                        prompt: Prompt { messages },
+                        config: config.clone(),
+                    }));
+                }
+            }
+        }
+
+        if round_requests.is_empty() {
+            break;
+        }
+
+        // 并行执行第二轮
+        let mut round_set = JoinSet::new();
+        for (soul_name, req) in round_requests {
+            let s_id = session_id.to_string();
+            let ws_c = ws.clone();
+            let gw = GatewayRegistry::clone(gateway);
+            let tr = tool_registry.clone();
+            let provider = req.provider.clone();
+            let prompt = req.prompt.clone();
+            let config = req.config.clone();
+            let detector = CrossDetector::new();
+            let tx2 = system_tx.clone();
+            round_set.spawn(async move {
+                run_soul_with_tools(
+                    &gw, &provider, &prompt, &config,
+                    &s_id, &soul_name, &ws_c, &tr,
+                    detector, &tx2,
+                ).await
+            });
+        }
+
+        let expected = collision_context.len();
+        let round_collect = async {
+            let mut acc = Vec::with_capacity(expected);
+            while let Some(r) = round_set.join_next().await {
+                match r {
+                    Ok(output) => {
+                        acc.push(output);
+                        if acc.len() >= expected { break; }
+                    }
+                    Err(e) => {
+                        acc.push(SoulOutput::error("unknown".into(), e.to_string()));
+                    }
+                }
+            }
+            acc
+        };
+
+        let round_outputs = match tokio::time::timeout(Duration::from_secs(SOUL_TIMEOUT_SECS), round_collect).await {
+            Ok(acc) => { round_set.abort_all(); acc }
+            Err(_) => {
+                let mut acc = Vec::new();
+                while let Ok(Some(Ok(output))) = tokio::time::timeout(Duration::from_millis(50), round_set.join_next()).await {
+                    acc.push(output);
+                }
+                round_set.abort_all();
+                acc
+            }
+        };
+
+        for o in &round_outputs {
+            crate::emit_soul_cost(system_tx, &o.soul_name, &o.usage, None);
+            let _ = crate::finalize_output(store, session_id, o, foundation::PossessionMode::Conference, task).await;
+        }
+
+        prev_collisions = new_collisions;
+        outputs.extend(round_outputs);
+    }
+    // ── 多轮碰撞注入结束 ──
 
     let synthesis_outputs: Vec<(String, String)> = outputs
         .iter()
@@ -495,6 +661,7 @@ async fn run_soul_with_tools(
     ws: &WsSessionManager,
     tool_registry: &crate::tools::ToolRegistry,
     detector: CrossDetector,
+    system_tx: &mpsc::Sender<WsEvent>,
 ) -> SoulOutput {
     let max_rounds = if let Some(tools) = &config.tools {
         let names: Vec<String> = tools.iter().map(|t| t.function.name.clone()).collect();
@@ -558,6 +725,7 @@ async fn run_soul_with_tools(
             &name,
             ws,
             detector.clone(),
+            system_tx,
         ).await;
 
         if output.error.is_some() {
@@ -719,6 +887,7 @@ async fn stream_single_soul_with_detection_with_provider(
     soul_name: &str,
     ws: &WsSessionManager,
     detector: CrossDetector,
+    system_tx: &mpsc::Sender<WsEvent>,
 ) -> SoulOutput {
     let mut content = String::new();
     let mut usage = foundation::UsageStats::default();
@@ -739,17 +908,15 @@ async fn stream_single_soul_with_detection_with_provider(
                 if !chunk.content.is_empty() {
                     content.push_str(&chunk.content);
 
-                    ws.broadcast_soul(
-                        session_id,
-                        &name,
-                        &WsEvent {
-                            event_type: WsEventType::SoulChunk,
-                            payload: chunk.content.clone(),
-                            reasoning_content: chunk.reasoning_content.clone(),
-                            soul_name: Some(name.clone()),
-                            seq,
-                },
-                    );
+                    let chunk_event = WsEvent {
+                        event_type: WsEventType::SoulChunk,
+                        payload: chunk.content.clone(),
+                        reasoning_content: chunk.reasoning_content.clone(),
+                        soul_name: Some(name.clone()),
+                        seq,
+                    };
+                    ws.broadcast_soul(session_id, &name, &chunk_event);
+                    let _ = system_tx.try_send(chunk_event).ok();
 
                     // 直接调用检测器，不走广播通道
                     detector.add_token(&name, &chunk.content);
@@ -757,19 +924,17 @@ async fn stream_single_soul_with_detection_with_provider(
                     seq += 1;
                 } else if let Some(ref reasoning) = chunk.reasoning_content {
                     if !reasoning.is_empty() && seq == 0 {
-                        ws.broadcast_soul(
-                            session_id,
-                            &name,
-                            &WsEvent {
-                                event_type: WsEventType::SoulChunk,
-                                payload: String::new(),
-                                reasoning_content: Some(reasoning.clone()),
-                                soul_name: Some(name.clone()),
-                                seq,
-            },
-                        );
+                        let reasoning_event = WsEvent {
+                            event_type: WsEventType::SoulChunk,
+                            payload: String::new(),
+                            reasoning_content: Some(reasoning.clone()),
+                            soul_name: Some(name.clone()),
+                            seq,
+                        };
+                        ws.broadcast_soul(session_id, &name, &reasoning_event);
+                        let _ = system_tx.try_send(reasoning_event).ok();
                         seq += 1;
-            }
+                    }
                 }
                 if chunk.finish_reason.as_deref() == Some("length") {
                     truncated = true;
@@ -794,17 +959,15 @@ async fn stream_single_soul_with_detection_with_provider(
         }
     }
 
-    ws.broadcast_soul(
-        session_id,
-        &name,
-        &WsEvent {
-            event_type: WsEventType::SoulDone,
-            payload: String::new(),
-            reasoning_content: None,
-            soul_name: Some(name.clone()),
-            seq,
-        },
-    );
+    let done_event = WsEvent {
+        event_type: WsEventType::SoulDone,
+        payload: String::new(),
+        reasoning_content: None,
+        soul_name: Some(name.clone()),
+        seq,
+    };
+    ws.broadcast_soul(session_id, &name, &done_event);
+    let _ = system_tx.try_send(done_event).ok();
 
     if truncated {
         content.push_str("\n\n> ⚠️ [系统提示] 输出因长度限制被截断。如需完整分析，可尝试简化任务或分拆问题。");
