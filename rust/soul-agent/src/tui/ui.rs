@@ -74,45 +74,66 @@ pub fn draw(f: &mut Frame, app: &mut App) {
 }
 
 fn draw_rounds(f: &mut Frame, app: &App, area: Rect) {
-    let souls = app.round_souls_with_collisions();
-    let mut lines: Vec<Line> = Vec::new();
+    let all_souls_data = app.round_souls_with_collisions();
 
-    if souls.is_empty() {
-        lines.push(Line::from(Span::styled("等待 Soul 回应...", Style::default().fg(Color::Gray))));
+    // Split area into columns — one per soul
+    use ratatui::layout::{Constraint, Direction, Layout};
+    let n = app.souls.len().max(1);
+    let constraints: Vec<Constraint> = (0..n).map(|_| Constraint::Ratio(1, n as u32)).collect();
+
+    if n == 1 {
+        // Single soul: full width
+        draw_soul_column(f, app, area, &all_souls_data, 0);
     } else {
-        for (name, content) in &souls {
-            lines.push(Line::from(Span::styled(
-                format!("── {} ──", name),
-                Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
-            )));
+        let columns = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints(constraints)
+            .split(area);
+
+        for (i, col) in columns.iter().enumerate() {
+            draw_soul_column(f, app, *col, &all_souls_data, i);
+        }
+    }
+}
+
+fn draw_soul_column(
+    f: &mut Frame,
+    app: &App,
+    area: Rect,
+    souls_data: &[(String, String)],
+    col_idx: usize,
+) {
+    if let Some((name, content)) = souls_data.get(col_idx) {
+        let mut lines: Vec<Line> = Vec::new();
+        lines.push(Line::from(Span::styled(
+            format!(" {} ", name),
+            Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD),
+        )));
+
+        if content.is_empty() {
+            lines.push(Line::from(Span::styled("...", Style::default().fg(Color::DarkGray))));
+        } else {
             for line in content.lines() {
                 if line.contains("⚡") {
-                    // Collision marker — highlight it
                     lines.push(Line::from(Span::styled(
                         line.to_string(),
                         Style::default().fg(Color::Red),
                     )));
-                } else if line.starts_with("── 收到的") {
-                    lines.push(Line::from(Span::styled(
-                        line.to_string(),
-                        Style::default().fg(Color::Magenta).add_modifier(Modifier::BOLD),
-                    )));
                 } else {
-                    for chunk in line.as_bytes().chunks(120) {
+                    for chunk in line.as_bytes().chunks(60) {
                         lines.push(Line::from(Span::raw(String::from_utf8_lossy(chunk).to_string())));
                     }
                 }
             }
-            lines.push(Line::from(""));
         }
-    }
 
-    f.render_widget(
-        Paragraph::new(Text::from(lines))
-            .block(Block::default().borders(Borders::ALL).title(" 交锋过程 "))
-            .scroll((app.scroll, 0)),
-        area,
-    );
+        f.render_widget(
+            Paragraph::new(Text::from(lines))
+                .block(Block::default().borders(Borders::ALL))
+                .scroll((app.scroll, 0)),
+            area,
+        );
+    }
 }
 
 fn draw_summary(f: &mut Frame, app: &App, area: Rect) {

@@ -214,7 +214,7 @@ pub async fn run(
         terminal.draw(|f| draw(f, &mut app))?;
 
         // Wait for either an event or keyboard input
-        if let Ok(has_key) = crossterm::event::poll(Duration::from_millis(100)) {
+        if let Ok(has_key) = crossterm::event::poll(Duration::from_millis(50)) {
             if has_key {
                 if let Ok(Event::Key(key)) = event::read() {
                     if key.kind == KeyEventKind::Press {
