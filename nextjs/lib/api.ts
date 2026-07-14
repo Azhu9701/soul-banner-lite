@@ -643,6 +643,20 @@ export async function startCourtSession(params: {
   });
 }
 
+export async function startBusinessSession(params: {
+  task: string;
+  judgment?: string;
+  worry?: string;
+  unknown?: string;
+}): Promise<StartPossessionResponse> {
+  return apiRequest<StartPossessionResponse>('/possess/business', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(params),
+    operation: 'startBusinessSession',
+  });
+}
+
 export async function exportSessionMarkdown(id: string, title: string): Promise<void> {
   const url = `${API_BASE}/sessions/${id}/export/markdown`;
   // window.open 触发浏览器原生下载行为，允许用户选择保存位置

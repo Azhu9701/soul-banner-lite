@@ -11,7 +11,7 @@ import {
   MessageCircle, Wand2
 } from "lucide-react";
 import {
-  analyzeTask, startPossession, startCourtSession, searchWeb, submitInterrogation,
+  analyzeTask, startPossession, startCourtSession, startBusinessSession, searchWeb, submitInterrogation,
   type SearxngResultItem, type InterrogationQuestion, type InterrogationVerdictResponse, type InterrogationResponse,
   API_BASE,
 } from "@/lib/api";
@@ -528,6 +528,33 @@ export function PossessionEntry() {
     }
   };
 
+  // ── 商业沙盘推演快捷入口 ──
+  const onStartBusiness = async () => {
+    if (!canStart) return;
+    setIsCancelled(false);
+    setLog([]);
+    setError("");
+    setPhase("starting");
+    setProgressLine("🏢 正在组建商业推演团队…");
+    addLog("🏢 启动商业沙盘推演：CEO、CFO、COO、CMO、管理咨询顾问");
+    try {
+      abortRef.current = new AbortController();
+      const { session_id } = await startBusinessSession({ task: task.trim() });
+      if (isCancelled) { setPhase("input"); return; }
+      setSessionId(session_id);
+      setMode("conference");
+      setPhase("running");
+      addLog("🎉 商业推演已启动，5 位商业角色正在分析…");
+      setProgressLine("商业推演进行中…");
+      triggerSessionsUpdate();
+    } catch (e: unknown) {
+      const errorMsg = e instanceof Error ? e.message : String(e);
+      setError(errorMsg);
+      addLog(`❌ 推演启动失败: ${errorMsg}`);
+      setPhase("input");
+    }
+  };
+
   const getModeLabel = (m: string) => (MODE_LABELS_LONG as Record<string, string>)[m] || m;
 
 
@@ -587,6 +614,15 @@ export function PossessionEntry() {
             >
               🏛 模拟仲裁庭
               <span className="text-[10px] opacity-70">5角色 · 一键开庭</span>
+            </button>
+            <button
+              type="button"
+              onClick={onStartBusiness}
+              disabled={!canStart}
+              className="inline-flex items-center gap-1.5 mt-2 ml-2 px-4 py-1.5 rounded-full text-xs font-medium border border-emerald-300 dark:border-emerald-700 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-950/50 transition-colors disabled:opacity-40"
+            >
+              🏢 商业推演
+              <span className="text-[10px] opacity-70">5角色 · 一键推演</span>
             </button>
           </div>
           

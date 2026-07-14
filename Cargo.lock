@@ -130,6 +130,7 @@ dependencies = [
  "glob",
  "lazy_static",
  "possession",
+ "rand 0.8.6",
  "regex",
  "registry",
  "reqwest 0.12.28",

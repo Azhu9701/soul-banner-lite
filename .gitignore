@@ -91,3 +91,6 @@ graphify-out/
 
 # Godot editor cache
 .godot/
+.godot/
+.superpowers/
+.zcode/plans/
