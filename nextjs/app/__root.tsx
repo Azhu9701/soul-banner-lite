@@ -20,6 +20,9 @@ export const Route = createRootRoute({
       { rel: 'apple-touch-icon', href: '/apple-icon.svg' },
       { rel: 'manifest', href: '/manifest.json' },
     ],
+    scripts: [
+      { src: '/sw-register.js', defer: true },
+    ],
     title: '模拟仲裁庭',
   }),
   component: RootComponent,
@@ -27,20 +30,12 @@ export const Route = createRootRoute({
 
 function RootComponent() {
   return (
-    <html lang="zh-CN" suppressHydrationWarning>
-      <head>
-        <meta name="mobile-web-app-capable" content="yes" />
-      </head>
-      <body className="antialiased">
-        <script src="/sw-register.js" defer />
-        <Providers>
-          <BreadcrumbProvider>
-            <ShellLayout>
-              <Outlet />
-            </ShellLayout>
-          </BreadcrumbProvider>
-        </Providers>
-      </body>
-    </html>
+    <Providers>
+      <BreadcrumbProvider>
+        <ShellLayout>
+          <Outlet />
+        </ShellLayout>
+      </BreadcrumbProvider>
+    </Providers>
   )
 }
