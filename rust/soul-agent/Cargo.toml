@@ -11,6 +11,10 @@ keywords = ["ai", "llm", "multi-agent", "orchestration", "agent"]
 name = "soul_agent"
 path = "src/lib.rs"
 
+[[bin]]
+name = "soul"
+path = "src/main.rs"
+
 [dependencies]
 possession = { path = "../possession" }
 ai-gateway = { path = "../ai-gateway" }
@@ -18,7 +22,13 @@ foundation = { path = "../foundation" }
 registry = { path = "../registry" }
 async-trait = { workspace = true }
 chrono = { workspace = true }
+tokio = { workspace = true }
+serde_json = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+clap = { version = "4", features = ["derive"] }
+colored = "2"
+indicatif = "0.17"
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["full"] }
-tracing-subscriber = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
