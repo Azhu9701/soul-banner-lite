@@ -29,7 +29,8 @@ export function AlertPanel({ unsummoned, lowEffectiveness }: AlertPanelProps) {
               {unsummoned.map((a) => (
                 <Link
                   key={a.soul_name}
-                  to={`/souls/${encodeURIComponent(a.soul_name)}` as any}
+                  to="/souls/$name"
+                  params={{ name: encodeURIComponent(a.soul_name) }}
                   className="block rounded-md border border-red-200 bg-red-50 dark:bg-red-950 px-3 py-1.5 text-sm hover:border-red-300 transition-colors"
                 >
                   <span className="font-medium">{a.soul_name}</span>
@@ -51,7 +52,8 @@ export function AlertPanel({ unsummoned, lowEffectiveness }: AlertPanelProps) {
               {lowEffectiveness.map((b) => (
                 <Link
                   key={b.soul_name}
-                  to={`/souls/${encodeURIComponent(b.soul_name)}` as any}
+                  to="/souls/$name"
+                  params={{ name: encodeURIComponent(b.soul_name) }}
                   className="block rounded-md border border-yellow-200 bg-yellow-50 dark:bg-yellow-950 px-3 py-1.5 text-sm hover:border-yellow-300 transition-colors"
                 >
                   <span className="font-medium">{b.soul_name}</span>

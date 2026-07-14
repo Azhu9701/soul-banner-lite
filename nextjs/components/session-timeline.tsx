@@ -91,7 +91,8 @@ function SessionRow({
 
   return (
     <Link
-      to={`/sessions/${s.id}` as any}
+      to="/sessions/$id"
+      params={{ id: s.id }}
       onClick={handleClick}
       className={`flex items-center gap-3 p-3 rounded-lg border transition-all hover:shadow-md group relative ${
         selectMode && selected ? "ring-2 ring-primary bg-primary/5" : ""

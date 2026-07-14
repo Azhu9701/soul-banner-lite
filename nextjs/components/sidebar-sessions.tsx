@@ -166,7 +166,8 @@ export function SidebarSessions() {
                     {s.observation_count > 0 && s.observation_count}
                   </span>
                   <Link
-                    to={href}
+                    to="/sessions/$id"
+                    params={{ id: s.id }}
                     data-testid={`sidebar-session-${s.id}`}
                     className={cn(
                       "flex-1 min-w-0 truncate",
