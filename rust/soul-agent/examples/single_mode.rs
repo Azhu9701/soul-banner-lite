@@ -1,47 +1,68 @@
-//! Soul Agent SDK — Quick Start Example
+//! Soul Agent — Quick Start
 //!
-//! This example demonstrates the minimal setup to use Soul Agent as a library.
-//! It shows the configuration, initialization, and session flow pattern.
+//! Demonstrates the complete setup and session flow.
+//! Requires soul profiles in `data/souls/` and at least one LLM provider configured.
 //!
-//! ```rust,ignore
-//! // The actual implementation requires:
-//! // 1. A Storage implementation (use FileStore + SqliteDb, or implement the Storage trait)
-//! // 2. Soul profiles in data/souls/
-//! // 3. At least one LLM provider configured (API key or LM Studio)
-//! ```
-//!
-//! Usage: cargo run -p soul-agent --example quick_start
+//! Usage: cargo run -p soul-agent --example single_mode
 
-use foundation::SoulAgentConfig;
+use std::sync::Arc;
 
-fn main() {
-    println!("Soul Agent SDK v{}", env!("CARGO_PKG_VERSION"));
-    println!();
+use soul_agent::prelude::*;
 
-    // 1. Create config — no YAML file needed
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    tracing_subscriber::fmt::init();
+
     let config = SoulAgentConfig::from_data_dir("./data");
-    println!("Config: data_dir={}", config.data_dir.display());
-    println!("  souls_dir={}", config.souls_dir.display());
-    println!("  db_path={}", config.db_path.display());
-    println!();
+    println!("Data dir: {}", config.data_dir.display());
 
-    // 2. Setup pattern (pseudocode):
-    println!("Setup pattern:");
-    println!("  let fs = Arc::new(FileStore::new(souls_dir, archive_dir, ...)?);");
-    println!("  let db = Arc::new(SqliteDb::open(&db_path)?);");
-    println!("  let store = MyStore::new(fs, db);  // impl Storage");
-    println!("  let registry = Arc::new(SoulRegistry::new(store.clone()).await?);");
-    println!("  let gateway = Arc::new(GatewayRegistry::new());");
-    println!("  let engine = PossessionEngine::new(store, registry, gateway, config.domain);");
-    println!();
+    let store = Arc::new(SoulStore::new(config.data_dir.to_str().unwrap())?);
+    let registry = Arc::new(SoulRegistry::new(store.clone()).await?);
+    let souls = registry.list_souls(&Default::default())?;
+    println!("Loaded {} souls", souls.len());
+    if souls.is_empty() {
+        println!("  Add .md files to data/souls/ to get started.");
+        return Ok(());
+    }
+    for s in souls.iter().take(5) {
+        println!("  - {} ({})", s.name, s.field);
+    }
 
-    // 3. Start session (pseudocode):
-    println!("Session flow:");
-    println!("  let input = PossessionInput {{ task, souls, mode, ..Default::default() }};");
-    println!("  let (tx, rx) = tokio::sync::mpsc::unbounded_channel();");
-    println!("  let session_id = engine.start_possession(input, tx).await?;");
-    println!("  while let Ok(event) = rx.recv().await {{ ... }}");
-    println!();
+    let gateway = Arc::new(GatewayRegistry::new());
+    let engine = PossessionEngine::new(store, registry, gateway, config.domain);
 
-    println!("For a working example, see the main project at https://github.com/...");
+    let first = &souls[0].name;
+    println!("\nStarting single session with: {}\n", first);
+
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<WsEvent>(256);
+    let input = PossessionInput {
+        task: "请用一段话介绍你自己".into(),
+        souls: vec![first.clone()],
+        mode: None,
+        topic: None,
+        judgment: None,
+        worry: None,
+        unknown: None,
+        interrogation_context: None,
+        search_topic: false,
+        search_results: None,
+        task_cards: Default::default(),
+    };
+
+    match engine.start_possession(input, tx).await {
+        Ok(session_id) => {
+            println!("Session: {}", session_id);
+            while let Some(event) = rx.recv().await {
+                match event.event_type {
+                    WsEventType::SoulChunk => print!("{}", event.payload),
+                    WsEventType::SessionComplete => { println!("\nDone."); break; }
+                    WsEventType::SoulError => eprintln!("\nError: {}", event.payload),
+                    _ => {}
+                }
+            }
+        }
+        Err(e) => eprintln!("Failed: {}", e),
+    }
+
+    Ok(())
 }

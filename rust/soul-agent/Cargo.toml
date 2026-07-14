@@ -16,6 +16,8 @@ possession = { path = "../possession" }
 ai-gateway = { path = "../ai-gateway" }
 foundation = { path = "../foundation" }
 registry = { path = "../registry" }
+async-trait = { workspace = true }
+chrono = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["full"] }
