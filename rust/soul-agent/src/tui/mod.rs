@@ -14,8 +14,8 @@ use crossterm::terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScree
 use crossterm::ExecutableCommand;
 use ratatui::backend::CrosstermBackend;
 use ratatui::layout::{Constraint, Direction, Layout};
-use ratatui::style::{Color, Style};
-use ratatui::text::Text;
+use ratatui::style::{Color, Modifier, Style};
+use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
 use ratatui::Terminal;
 
@@ -68,6 +68,8 @@ pub async fn run(
     } else {
         souls.clone()
     };
+    let mut soul_cursor: usize = 0;
+    let mut focus_input = true; // true = typing in task field, false = navigating souls
 
     if task_input.is_empty() {
         loop {
@@ -78,25 +80,75 @@ pub async fn run(
                     .constraints([Constraint::Length(3), Constraint::Min(3), Constraint::Length(3)])
                     .split(area);
 
-                let title = Paragraph::new("🧠 Soul Agent")
-                    .block(Block::default().borders(Borders::ALL).style(Style::default().fg(Color::Cyan)));
-                f.render_widget(title, chunks[0]);
+                f.render_widget(
+                    Paragraph::new("🧠 Soul Agent")
+                        .block(Block::default().borders(Borders::ALL).style(Style::default().fg(Color::Cyan))),
+                    chunks[0],
+                );
 
+                // Main area: soul list + input
+                let main = chunks[1];
+                let main_chunks = Layout::default()
+                    .direction(Direction::Horizontal)
+                    .constraints([Constraint::Percentage(40), Constraint::Percentage(60)])
+                    .split(main);
+
+                // Soul list (left)
+                let mut soul_lines: Vec<Line> = Vec::new();
+                soul_lines.push(Line::from(Span::styled(
+                    format!("{} 可用 Soul ({})", if focus_input { "  " } else { "▶ " }, available.len()),
+                    Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD),
+                )));
+                for (i, name) in available.iter().enumerate() {
+                    let checked = selected.contains(name);
+                    let marker = if checked { "[✓]" } else { "[ ]" };
+                    let cursor = if !focus_input && i == soul_cursor { " ▸" } else { "  " };
+                    let style = if !focus_input && i == soul_cursor {
+                        Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)
+                    } else if checked {
+                        Style::default().fg(Color::Green)
+                    } else {
+                        Style::default().fg(Color::Gray)
+                    };
+                    soul_lines.push(Line::from(Span::styled(
+                        format!("{} {}{}", cursor, marker, name),
+                        style,
+                    )));
+                }
+                f.render_widget(
+                    Paragraph::new(Text::from(soul_lines))
+                        .block(Block::default().borders(Borders::ALL).title(" Souls "))
+                        .wrap(Wrap { trim: false }),
+                    main_chunks[0],
+                );
+
+                // Task input (right)
+                let input_style = if focus_input {
+                    Style::default().fg(Color::Yellow)
+                } else {
+                    Style::default().fg(Color::DarkGray)
+                };
                 let display = if task_input.is_empty() {
-                    "在此输入你的问题...".to_string()
+                    "在此输入问题...".to_string()
                 } else {
                     format!("{}█", task_input)
                 };
                 f.render_widget(
                     Paragraph::new(Text::from(display))
-                        .block(Block::default().borders(Borders::ALL).title(" 问题 ").style(Style::default().fg(Color::Yellow)))
+                        .block(Block::default().borders(Borders::ALL).title(" 问题 ").style(input_style))
                         .wrap(Wrap { trim: false }),
-                    chunks[1],
+                    main_chunks[1],
                 );
 
+                // Footer
+                let selected_display = if selected.is_empty() {
+                    "无".to_string()
+                } else {
+                    selected.join("、")
+                };
                 let footer_text = format!(
-                    "Souls: {} | Mode: {} | Enter:提交  Tab:换Soul  q:退出",
-                    selected.join("、"), mode
+                    "已选: {} | Mode: {} | Tab:切换面板  Space:选中  ↑↓:导航  Enter:提交  q:退出",
+                    selected_display, mode
                 );
                 f.render_widget(
                     Paragraph::new(Text::from(footer_text))
@@ -114,16 +166,26 @@ pub async fn run(
                             return Ok(());
                         }
                         KeyCode::Enter => {
-                            if !task_input.is_empty() { break; }
+                            if !task_input.is_empty() && !selected.is_empty() { break; }
                         }
-                        KeyCode::Tab => {
-                            if available.len() > 3 {
-                                let start = ((selected.len() / 3) * 3) % available.len();
-                                selected = available.iter().skip(start).take(3).cloned().collect();
+                        KeyCode::Tab => focus_input = !focus_input,
+                        KeyCode::Up if !focus_input => {
+                            soul_cursor = soul_cursor.saturating_sub(1);
+                        }
+                        KeyCode::Down if !focus_input => {
+                            soul_cursor = (soul_cursor + 1).min(available.len().saturating_sub(1));
+                        }
+                        KeyCode::Char(' ') if !focus_input => {
+                            if let Some(name) = available.get(soul_cursor) {
+                                if selected.contains(name) {
+                                    selected.retain(|s| s != name);
+                                } else {
+                                    selected.push(name.clone());
+                                }
                             }
                         }
-                        KeyCode::Char(c) => task_input.push(c),
-                        KeyCode::Backspace => { task_input.pop(); }
+                        KeyCode::Char(c) if focus_input => task_input.push(c),
+                        KeyCode::Backspace if focus_input => { task_input.pop(); }
                         _ => {}
                     }
                 }
