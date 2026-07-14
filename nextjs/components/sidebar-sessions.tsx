@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useLocation, useNavigate } from "@tanstack/react-router";
 import { Trash2, Pencil, Check, X, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fetchSessions, deleteSession, renameSession, type SessionSummary } from "@/lib/api";
@@ -25,8 +24,8 @@ export function SidebarSessions() {
   const [editingTitle, setEditingTitle] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [clientReady, setClientReady] = useState(false);
-  const pathname = usePathname();
-  const router = useRouter();
+  const pathname = useLocation().pathname;
+  const navigate = useNavigate();
 
   const refreshSessions = useCallback((noCache = false) => {
     setRefreshing(true);
@@ -61,7 +60,7 @@ export function SidebarSessions() {
       refreshSessions(true);
       triggerSessionsUpdate();
       if (pathname === `/sessions/${sessionId}`) {
-        router.push("/sessions");
+        navigate({ to: "/sessions" });
       }
     } catch (e) {
       console.error("Failed to delete session:", e);
@@ -166,8 +165,12 @@ export function SidebarSessions() {
                   >
                     {s.observation_count > 0 && s.observation_count}
                   </span>
-                  <Link
-                    href={href}
+                  <a
+                    href={`/sessions/${s.id}`}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      navigate({ to: "/sessions/$id", params: { id: s.id } })
+                    }}
                     data-testid={`sidebar-session-${s.id}`}
                     className={cn(
                       "flex-1 min-w-0 truncate",
@@ -177,7 +180,7 @@ export function SidebarSessions() {
                     )}
                   >
                     {s.title}
-                  </Link>
+                  </a>
                   <span className="text-[10px] text-muted-foreground/50 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                     {modeLabel(s.mode)}
                   </span>

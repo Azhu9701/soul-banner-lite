@@ -1,0 +1,55 @@
+<h2>游戏广场概念确认 🎮</h2>
+<p class="subtitle">你想象中是什么样的？</p>
+
+<h3>我理解的需求</h3>
+
+<div class="section">
+  <p><strong>核心：</strong>用 <strong>Godot</strong> 创建一个 3D 游戏广场（类似大厅），玩家可以在其中游走，进入不同的"门"或"区域"，参与不同的模拟游戏。</p>
+</div>
+
+<div class="section">
+  <h3>已确定的游戏类型：</h3>
+</div>
+
+<div class="cards">
+  <div class="card" data-choice="court" onclick="toggleSelect(this)">
+    <div class="card-body">
+      <h3>⚖️ 模拟仲裁庭</h3>
+      <p>现有的劳动仲裁多角色庭审系统（已完成）</p>
+    </div>
+  </div>
+  <div class="card" data-choice="business" onclick="toggleSelect(this)">
+    <div class="card-body">
+      <h3>🏢 商业沙盘推演</h3>
+      <p>来自 PDF 的企业经营模拟（待实现）</p>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>待确认的问题：</h3>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="more" onclick="toggleSelect(this)">
+    <div class="letter">Q1</div>
+    <div class="content">
+      <h3>除了仲裁庭和商业沙盘，还计划加入其他模拟游戏吗？</h3>
+      <p>比如：模拟立法、模拟调解、模拟谈判...</p>
+    </div>
+  </div>
+  <div class="option" data-choice="scope" onclick="toggleSelect(this)">
+    <div class="letter">Q2</div>
+    <div class="content">
+      <h3>这个游戏广场的范围</h3>
+      <p>是整体替换现有 Next.js 前端，还是 Godot 只做新的游戏入口/大厅，现有页面保留？</p>
+    </div>
+  </div>
+  <div class="option" data-choice="tech" onclick="toggleSelect(this)">
+    <div class="letter">Q3</div>
+    <div class="content">
+      <h3>技术方向</h3>
+      <p>Godot 负责渲染，后端 API 继续用 Rust？还是全部迁移到 Godot？</p>
+    </div>
+  </div>
+</div>

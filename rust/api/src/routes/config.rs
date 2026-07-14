@@ -993,6 +993,7 @@ async fn test_claude(
 const DOMAIN_FILES: &[(&str, &str, &str)] = &[
     // (profile_id, display_label, config_file)
     ("court", "模拟仲裁庭", "domain.court.yaml"),
+    ("business", "商业沙盘推演", "domain.business.yaml"),
 ];
 
 #[derive(Debug, Clone, Serialize)]

@@ -1,0 +1,98 @@
+<h2>GDScript vs C# — 怎么选？</h2>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">🐍 GDScript <span class="label">推荐</span></div>
+    <div class="mockup-body" style="padding:12px;">
+      <p><strong>Godot 原生语言</strong></p>
+      <ul>
+        <li>语法像 Python，上手极快</li>
+        <li>与 Godot 引擎深度集成</li>
+        <li>无需编译，改完即跑</li>
+        <li>适合 UI / 场景 / 动画逻辑</li>
+      </ul>
+      <pre style="font-size:11px;background:var(--bg);padding:8px;border-radius:4px;">
+extends Node
+
+func _ready():
+    var response = await api.get_session(id)
+    chat_bubble.text = response.content
+      </pre>
+    </div>
+  </div>
+  <div class="mockup">
+    <div class="mockup-header">💻 C#</div>
+    <div class="mockup-body" style="padding:12px;">
+      <p><strong>.NET 语言</strong></p>
+      <ul>
+        <li>强类型，IDE 支持好</li>
+        <li>性能更好（CPU 密集）</li>
+        <li>适合从 Unity 转来的团队</li>
+        <li>需 .NET SDK，编译步骤</li>
+      </ul>
+      <pre style="font-size:11px;background:var(--bg);padding:8px;border-radius:4px;">
+using Godot;
+public partial class Api : Node
+{
+    public async Task&lt;Session&gt; GetSession(string id) {
+        // ...
+    }
+}
+      </pre>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>这个项目的建议</h3>
+  <div class="pros-cons">
+    <div class="pros">
+      <h4>推荐 GDScript 的理由</h4>
+      <ul>
+        <li>重活（AI 调用、数据管理）都在 Rust 后端，Godot 只做展示和交互</li>
+        <li>商业沙盘的逻辑主要是 UI 弹窗和场景切换，不需要 C# 的性能</li>
+        <li>开发效率更高——不用编译，改一行代码立刻看效果</li>
+        <li>一个项目里两门语言（Rust + GDScript）比三门（Rust + C# + GDScript）简单</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<h2>发布方式怎么选？</h2>
+
+<div class="options">
+  <div class="option" onclick="toggleSelect(this)" data-choice="web">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>🌐 Godot Web 导出</h3>
+      <p>导出为 HTML5/WebAssembly，部署到 Nginx/Caddy，替换现有 Next.js 前端。用户浏览器直接打开，无需安装。</p>
+      <div class="pros-cons" style="font-size:13px;">
+        <div class="pros"><h4>优势</h4><ul><li>零安装，和现在一样打开即用</li><li>可同时发布桌面版</li></ul></div>
+        <div class="cons"><h4>注意</h4><ul><li>Web 性能比桌面稍弱</li><li>部分高级 3D 特性有限制</li></ul></div>
+      </div>
+    </div>
+  </div>
+  <div class="option" onclick="toggleSelect(this)" data-choice="desktop">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>🖥️ 桌面应用优先</h3>
+      <p>导出为 Mac/Windows 原生应用。用户体验最好，性能全开。</p>
+      <div class="pros-cons" style="font-size:13px;">
+        <div class="pros"><h4>优势</h4><ul><li>最佳性能与体验</li><li>可离线缓存</li></ul></div>
+        <div class="cons"><h4>注意</h4><ul><li>用户需下载安装</li></ul></div>
+      </div>
+    </div>
+  </div>
+  <div class="option" onclick="toggleSelect(this)" data-choice="both">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>🌟 推荐：Web + 桌面双发</h3>
+      <p>先用 Web 导出替代现有前端，同时出桌面版给需要的用户。Godot 一次开发，多平台导出。</p>
+      <div class="pros-cons" style="font-size:13px;">
+        <div class="pros"><h4>优势</h4><ul><li>一个项目出所有版本</li><li>Web 版零门槛引流</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>

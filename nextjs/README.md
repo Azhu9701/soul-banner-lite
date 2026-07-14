@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 模拟仲裁庭 — 前端
 
-## Getting Started
+基于 **TanStack Start** (React 19 + Vite) 构建。
 
-First, run the development server:
+## 启动
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm dev      # 开发服务器 http://localhost:3000
+pnpm build    # 构建生产版本
+pnpm start    # 启动生产服务器
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 技术栈
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **框架**: TanStack Start 1.x + TanStack Router
+- **UI**: React 19 + shadcn/ui + Tailwind CSS v4
+- **构建**: Vite 7
+- **包管理**: pnpm
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 目录
 
-## Learn More
+```
+app/          # 路由（TanStack Router 扁平路由）
+components/   # React 组件
+contexts/     # React Context
+hooks/        # 自定义 Hooks
+lib/          # API 客户端、工具函数
+config/       # 配置常量
+public/       # 静态资源
+```
 
-To learn more about Next.js, take a look at the following resources:
+## 路由
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+| 路由 | 文件 |
+|------|------|
+| `/` | `app/index.tsx` |
+| `/souls` | `app/souls.tsx` |
+| `/souls/$name` | `app/souls.$name.tsx` |
+| `/souls/collect` | `app/souls.collect.tsx` |
+| `/souls/refine` | `app/souls.refine.tsx` |
+| `/possess` | `app/possess.tsx` |
+| `/possess/$sessionId` | `app/possess.$sessionId.tsx` |
+| `/sessions` | `app/sessions.tsx` |
+| `/sessions/$id` | `app/sessions.$id.tsx` |
+| `/analytics` | `app/analytics.tsx` |
+| `/knowledge` | `app/knowledge.tsx` |
+| `/models` | `app/models.tsx` |
+| `/searxng` | `app/searxng.tsx` |

@@ -9,6 +9,7 @@ pub mod storage;
 pub mod vector_search;
 
 pub use config::Config;
+pub use config::SoulAgentConfig;
 pub use domain::DomainProfile;
 pub use error::{FoundationError, Result};
 pub use fs_store::FileStore;

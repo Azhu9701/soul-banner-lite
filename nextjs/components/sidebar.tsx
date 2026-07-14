@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname } from "next/navigation";
+import { useLocation } from "@tanstack/react-router";
 import { useSidebar } from "@/contexts/sidebar-context";
 import { cn } from "@/lib/utils";
 import { SidebarLogo } from "@/components/sidebar-logo";
@@ -13,7 +13,7 @@ import { useRef, useEffect } from "react";
 
 export function Sidebar() {
   const { collapsed, toggle, ready, width, setWidth } = useSidebar();
-  const pathname = usePathname();
+  const pathname = useLocation().pathname;
   const isDragging = useRef(false);
   const startX = useRef(0);
   const startWidth = useRef(0);

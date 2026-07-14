@@ -18,6 +18,7 @@ const PROFILE_ICONS: Record<string, string> = {
   legal: "⚖️",
   labor: "🛡️",
   court: "🏛",
+  business: "🏢",
 };
 
 export function DomainSwitcher() {
@@ -33,6 +34,7 @@ export function DomainSwitcher() {
         // fallback：至少显示当前领域
         setOptions([
           { profile: "court", label: "模拟仲裁庭", available: true },
+          { profile: "business", label: "商业沙盘推演", available: true },
           { profile: "legal", label: "法律智囊团", available: true },
         ]);
       });

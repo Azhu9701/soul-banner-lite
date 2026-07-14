@@ -1,5 +1,6 @@
 mod auth;
 mod bing;
+mod business_sandbox;
 mod coding_tools;
 mod collector;
 mod error;
@@ -7,6 +8,7 @@ mod middleware;
 mod ocr;
 mod rate_limiter;
 mod routes;
+mod searxng_cache;
 mod state;
 mod worker_tools;
 mod store;
@@ -22,7 +24,8 @@ use registry::SoulRegistry;
 
 use crate::collector::SoulCollector;
 use crate::rate_limiter::RateLimiter;
-use crate::state::AppState;
+use crate::searxng_cache::SearxngCache;
+use crate::state::{AppState, BusinessSandboxState};
 use crate::store::AppStore;
 use crate::web_fetch_tool::WebFetchTool;
 use crate::web_search_tool::WebSearchTool;
@@ -224,6 +227,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let api_token = config.api_token.clone();
     let cors_origins = config.cors_origins.clone();
 
+    let searxng_cache = Arc::new(SearxngCache::new(store.db(), 300));
+
     let state = Arc::new(AppState {
         registry,
         engine: engine.clone(),
@@ -234,6 +239,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         interrogation_gates: Arc::new(dashmap::DashMap::new()),
         preferred_provider: Arc::new(std::sync::RwLock::new(None)),
         api_token: api_token.clone(),
+        business_sandbox: Arc::new(BusinessSandboxState::new()),
+        searxng_cache,
     });
 
     let app = build_router(state.clone(), rate_limiter, cors_origins);
@@ -266,6 +273,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             }
         });
     }
+
+    // SearXNG cache cleanup every 10 min
+    let searxng_cache_for_cleanup = state.searxng_cache.clone();
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(600));
+        loop {
+            interval.tick().await;
+            searxng_cache_for_cleanup.cleanup();
+        }
+    });
 
     if api_token.is_some() {
         tracing::info!("API authentication: enabled");
@@ -327,6 +344,10 @@ fn build_router(state: Arc<AppState>, rate_limiter: Arc<RateLimiter>, cors_origi
         .route(
             "/ws/souls/auto-create/:task_id",
             axum::routing::get(ws::auto_create_ws_handler),
+        )
+        .route(
+            "/ws/game/:game_id",
+            axum::routing::get(crate::business_sandbox::ws_handler::game_ws_handler),
         )
         .with_state(state);
 

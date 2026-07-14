@@ -6,6 +6,7 @@ import { getDomainInfo, setDomain as apiSetDomain, type DomainInfo } from "@/lib
 // 内置领域预设——用于初始显示（在 API 响应前）
 const DOMAIN_PRESETS: Record<string, { icon: string; label: string }> = {
   court: { icon: "🏛", label: "模拟仲裁庭" },
+  business: { icon: "🏢", label: "商业沙盘推演" },
 };
 
 interface DomainContextType {

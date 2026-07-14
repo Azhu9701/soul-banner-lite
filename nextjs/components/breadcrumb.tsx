@@ -1,7 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link, useLocation } from "@tanstack/react-router";
 import { ChevronRight } from "lucide-react";
 import { useBreadcrumb } from "@/contexts/breadcrumb-context";
 
@@ -13,7 +12,8 @@ const labels: Record<string, string> = {
 };
 
 export function Breadcrumb() {
-  const pathname = usePathname();
+  const location = useLocation();
+  const pathname = location.pathname;
   const { lastLabel } = useBreadcrumb();
   const segments = pathname.split("/").filter(Boolean);
 
@@ -25,7 +25,7 @@ export function Breadcrumb() {
     <nav data-testid="breadcrumb" aria-label="面包屑">
       <ol className="flex items-center gap-1 text-sm text-muted-foreground">
         <li>
-          <Link href="/" className="hover:text-foreground transition-colors">
+          <Link to="/" className="hover:text-foreground transition-colors">
             首页
           </Link>
         </li>
@@ -41,7 +41,7 @@ export function Breadcrumb() {
             <li key={i} className="flex items-center gap-1">
               <ChevronRight className="h-3 w-3" />
               <Link
-                href={`/${segments.slice(0, i + 1).join("/")}`}
+                to={`/${segments.slice(0, i + 1).join("/")}` as any}
                 className="hover:text-foreground transition-colors capitalize"
               >
                 {displayLabel}

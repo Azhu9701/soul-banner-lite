@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "@tanstack/react-router";
 import { GitFork, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { forkSession } from "@/lib/api";
@@ -13,7 +13,7 @@ export function MessageForkButton({
   sessionId: string;
   messageSeq: number;
 }) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const [forking, setForking] = useState(false);
 
   const onFork = async (e: React.MouseEvent) => {
@@ -21,7 +21,7 @@ export function MessageForkButton({
     setForking(true);
     try {
       const result = await forkSession(sessionId, messageSeq);
-      router.push(`/sessions/${result.session_id}?fork=true`);
+      navigate({ to: `/sessions/${result.session_id}?fork=true` });
     } catch (e: unknown) {
       console.error("Fork failed:", e);
       setForking(false);

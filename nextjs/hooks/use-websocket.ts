@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { SESSIONS_UPDATED_EVENT } from "@/components/sidebar-sessions";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
+const API_BASE = import.meta.env.VITE_API_URL || "/api/v1";
 
 export interface ProcessStep {
   event: string;
@@ -176,7 +176,7 @@ export function useWebSocket(sessionId: string) {
       wsRef.current.onclose = null;
       wsRef.current.close();
     }
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
+    const apiBase = import.meta.env.VITE_API_URL || "/api/v1";
     const wsHost = apiBase.replace("http://", "ws://").replace("https://", "wss://").replace("/api/v1", "");
     const url = `${wsHost}/ws/possess/${sessionId}/main`;
     const ws = new WebSocket(url);

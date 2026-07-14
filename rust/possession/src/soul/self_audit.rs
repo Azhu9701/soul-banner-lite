@@ -101,7 +101,7 @@ impl SelfAudit {
     }
 
     fn check_contradictions(
-        profile: &SoulProfile,
+        _profile: &SoulProfile,
         output: &str,
         result: &mut AuditResult,
     ) {

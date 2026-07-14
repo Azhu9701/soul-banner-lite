@@ -1,0 +1,196 @@
+<style>
+* {margin:0;padding:0;box-sizing:border-box}
+body {background:#e8e8e8;display:flex;justify-content:center;padding:16px;font-family:-apple-system,sans-serif}
+.game {width:960px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,.08)}
+/* TOP BAR */
+.topbar {background:#f8f6f4;padding:10px 20px;display:flex;align-items:center;gap:14px;border-bottom:1px solid #ece8e4}
+.topbar .logo {font-size:16px;font-weight:800;color:#2d2d2d}
+.topbar .sep {color:#d4cfc8}
+.topbar .stat {font-size:12px;color:#666}
+.topbar .cash {background:#febaaf;color:#2d2d2d;padding:4px 14px;border-radius:14px;font-weight:700;font-size:14px}
+/* LAYOUT */
+.main {display:flex;gap:0;min-height:460px}
+.left {width:190px;background:#faf9f8;border-right:1px solid #f0ece8;padding:12px}
+.center {flex:1;padding:12px;display:flex;flex-direction:column;gap:10px}
+.right {width:200px;background:#faf9f8;border-left:1px solid #f0ece8;padding:12px}
+/* PANELS */
+.panel {margin-bottom:10px}
+.panel .hdr {font-weight:700;font-size:13px;color:#2d2d2d;padding-bottom:6px;margin-bottom:8px;border-bottom:1px solid #f0ece8}
+.row {display:flex;align-items:center;gap:6px;font-size:12px;margin:4px 0;color:#444}
+.dot {width:7px;height:7px;border-radius:50%;display:inline-block}
+.green {background:#7bc67e}
+.gray {background:#ddd}
+input.mini {width:54px;border:1px solid #e0dbd5;border-radius:4px;padding:4px 6px;font-size:12px}
+.btn {border:none;cursor:pointer;font-weight:600;font-size:12px;border-radius:5px;padding:6px 14px}
+.btn-accent {background:#febaaf;color:#2d2d2d}
+.btn-accent:hover {background:#fea89a}
+.btn-light {background:#f5f2f0;color:#555;border:1px solid #e8e4e0}
+.btn-light:hover {background:#ede9e5}
+/* LINE CARDS */
+.cards {display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px}
+.card {border-radius:8px;padding:10px;text-align:center;background:#fdfdfc}
+.card.live {border:2px solid #febaaf}
+.card.build {border:2px solid #c4d4e8}
+.card.switch {border:2px solid #e8d4a8}
+.card.empty {border:2px dashed #e5e0da;opacity:.5}
+.card .t {font-size:10px;color:#999}
+.card .e {font-size:20px;margin:4px 0}
+.card .p {font-size:11px;font-weight:700}
+.card .bb {background:#f5f2f0;border-radius:3px;height:8px;margin:4px 0;overflow:hidden}
+.card .bf {height:100%;border-radius:3px}
+.bf.accent {background:#febaaf}
+.bf.blue {background:#8faac8}
+.bf.gold {background:#d4b87a}
+.card .s {font-size:9px;color:#aaa;margin-top:2px}
+/* FINANCIAL REPORT */
+.report {background:#faf9f8;border:1px solid #f0ece8;border-radius:8px;padding:10px;margin-top:4px}
+.report .hdr {font-weight:700;font-size:12px;color:#2d2d2d;margin-bottom:6px}
+.report table {width:100%;font-size:11px;border-collapse:collapse}
+.report td {padding:3px 6px;border-bottom:1px solid #f5f2f0}
+.report td.v {text-align:right;font-weight:600}
+.report td.pos {color:#5a9e5f}
+.report td.neg {color:#c06050}
+/* BANK SLOTS */
+.slots {display:flex;gap:3px;margin:4px 0;flex-wrap:wrap}
+.slot {width:34px;height:34px;border:1px solid #e8e4e0;border-radius:4px;text-align:center;font-size:8px;color:#ccc;line-height:34px}
+.slot.used {background:#febaaf;color:#2d2d2d;font-weight:700;font-size:10px}
+/* BOTTOM */
+.bottombar {background:#f8f6f4;padding:10px 20px;display:flex;gap:8px;align-items:center;border-top:1px solid #ece8e4}
+.phase {font-size:11px;color:#bbb}
+</style>
+<div class="game">
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <span class="logo">🏢 创业沙盘</span>
+    <span class="sep">│</span>
+    <span class="stat">📅 第 3 年</span>
+    <span class="stat">🕐 Q2</span>
+    <span style="flex:1"></span>
+    <span class="cash">💰 24M</span>
+    <span class="stat">资产 82M</span>
+    <span class="stat">🏆 排名 #2</span>
+  </div>
+
+  <!-- MAIN BODY -->
+  <div class="main">
+    <!-- LEFT -->
+    <div class="left">
+      <div class="panel">
+        <div class="hdr">📈 市场</div>
+        <div class="row"><span class="dot green"></span> 平城 #1</div>
+        <div class="row"><span class="dot gray"></span> <span style="color:#bbb">南城</span></div>
+        <div class="row"><span class="dot gray"></span> <span style="color:#bbb">北城</span></div>
+        <div class="row"><span class="dot gray"></span> <span style="color:#bbb">东城</span></div>
+        <div style="margin-top:8px;font-size:11px;color:#999">营销投入</div>
+        <div style="display:flex;gap:4px;align-items:center;margin-top:3px">
+          <input class="mini" value="2"><span style="font-size:11px">M</span>
+          <button class="btn btn-accent">提交</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="hdr">💳 贷款</div>
+        <div style="font-size:10px;color:#999;margin-bottom:2px">长贷 (5%/年)</div>
+        <div class="slots"><span class="slot">1</span><span class="slot">2</span><span class="slot">3</span><span class="slot">4</span></div>
+        <div style="font-size:10px;color:#999;margin-bottom:2px;margin-top:6px">短贷 (10%/年)</div>
+        <div class="slots"><span class="slot used">20M</span><span class="slot">Q2</span><span class="slot">Q3</span><span class="slot">Q4</span></div>
+        <div style="margin-top:8px;display:flex;gap:4px;">
+          <button class="btn btn-light">💳 贷款</button>
+          <button class="btn btn-light">💰 贴现</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CENTER -->
+    <div class="center">
+      <!-- FACTORY -->
+      <div class="panel">
+        <div class="hdr">🏭 老工厂 (4/4 产线)</div>
+        <div class="cards">
+          <div class="card live">
+            <div class="t">#1 手工线</div><div class="e">🐴</div>
+            <div class="p" style="color:#c06050">奔马</div>
+            <div class="bb"><div class="bf accent" style="width:70%"></div></div>
+            <div class="s">生产中</div>
+          </div>
+          <div class="card build">
+            <div class="t">#2 半自动</div><div class="e">🔧</div>
+            <div class="p" style="color:#6a8cb0">建设中</div>
+            <div class="bb"><div class="bf blue" style="width:50%"></div></div>
+            <div class="s">第 2/4 季度</div>
+          </div>
+          <div class="card switch">
+            <div class="t">#3 全自动</div><div class="e">🦅</div>
+            <div class="p" style="color:#b09a50">飞鹰</div>
+            <div class="bb"><div class="bf gold" style="width:85%"></div></div>
+            <div class="s">转产中</div>
+          </div>
+          <div class="card empty">
+            <div class="t">#4 空闲</div><div class="e">—</div>
+            <div class="p">未配置</div>
+            <div class="bb"></div><div class="s">空闲</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FINANCIAL REPORT (in layout, not popup) -->
+      <div class="report">
+        <div class="hdr">📊 年度财务报表 · 第 3 年</div>
+        <div style="display:flex;gap:12px">
+          <table style="flex:1">
+            <tr><td style="font-weight:700" colspan="2">损益表</td></tr>
+            <tr><td>营业收入</td><td class="v">100M</td></tr>
+            <tr><td>营业成本</td><td class="v">40M</td></tr>
+            <tr><td>毛利润</td><td class="v pos">60M</td></tr>
+            <tr><td>销售费用</td><td class="v">8M</td></tr>
+            <tr><td>管理费用</td><td class="v">4M</td></tr>
+            <tr><td style="font-weight:700">净利润</td><td class="v pos" style="font-weight:700">20M</td></tr>
+          </table>
+          <table style="flex:1">
+            <tr><td style="font-weight:700" colspan="2">资产负债表</td></tr>
+            <tr><td>流动资产</td><td class="v">52M</td></tr>
+            <tr><td>固定资产</td><td class="v">30M</td></tr>
+            <tr><td>总资产</td><td class="v">82M</td></tr>
+            <tr><td>总负债</td><td class="v">20M</td></tr>
+            <tr><td>股东权益</td><td class="v pos">62M</td></tr>
+          </table>
+          <table style="flex:1">
+            <tr><td style="font-weight:700" colspan="2">关键指标</td></tr>
+            <tr><td>毛利率</td><td class="v pos">60%</td></tr>
+            <tr><td>净利率</td><td class="v pos">20%</td></tr>
+            <tr><td>资产负债率</td><td class="v" style="color:#e09830">24%</td></tr>
+            <tr><td>ROE</td><td class="v pos">32%</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="right">
+      <div class="panel">
+        <div class="hdr">📦 库存</div>
+        <div class="row">原料 <b>8</b></div>
+        <div class="row">在制 <b>2</b></div>
+        <div class="row">🐴 奔马 <b>x4</b></div>
+        <div class="row">🐯 猛虎 <b>x2</b></div>
+        <div class="row">应收 <b>12M</b> (2Q)</div>
+      </div>
+      <div class="panel">
+        <div class="hdr">🔬 研发</div>
+        <div class="row"><span style="color:#bbb">🐴 奔马</span> <b style="color:#5a9e5f">✓</b></div>
+        <div class="row">🐯 猛虎 <b>3/6</b></div>
+        <div class="row">🦅 飞鹰 <b>1/8</b></div>
+        <div class="row" style="color:#ccc">🐉 天龙</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM BAR -->
+  <div class="bottombar">
+    <button class="btn btn-accent">▶ 执行下一季度</button>
+    <button class="btn btn-light">📊 年报</button>
+    <button class="btn btn-light">📋 订货会</button>
+    <button class="btn btn-light">🏗️ 工厂</button>
+    <span style="flex:1"></span>
+    <span class="phase">第 2 节 · 市场竞争 (5-7年)</span>
+  </div>
+</div>

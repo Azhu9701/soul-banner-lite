@@ -18,6 +18,15 @@ const COURT_ROLE_LABELS: Record<string, string> = {
   "劳动者之声": "👤 当事人",
 };
 
+/** 商业推演角色名称映射 */
+const BUSINESS_ROLE_LABELS: Record<string, string> = {
+  "CEO": "🎯 总经理",
+  "CFO": "📊 财务总监",
+  "COO": "🏭 运营总监",
+  "CMO": "📈 市场总监",
+  "管理咨询顾问": "💡 管理咨询顾问",
+};
+
 interface ConferenceViewProps {
   messages: Record<string, SoulMessage>;
   synthesis: string;
@@ -198,7 +207,7 @@ function SoulPanelButton({
   toolCalls: ToolCallEvent[];
   openModal: (name: string) => void;
 }) {
-  const roleLabel = COURT_ROLE_LABELS[name];
+  const roleLabel = COURT_ROLE_LABELS[name] || BUSINESS_ROLE_LABELS[name];
   const soulToolCalls = toolCalls.filter(tc => tc.soulName === name);
   return (
     <button

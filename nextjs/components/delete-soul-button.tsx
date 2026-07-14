@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "@tanstack/react-router";
 import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DeleteSoulConfirmDialog } from "@/components/delete-soul-confirm-dialog";
@@ -14,11 +14,10 @@ interface DeleteSoulButtonProps {
 
 export function DeleteSoulButton({ soulName, variant = "icon", className }: DeleteSoulButtonProps) {
   const [open, setOpen] = useState(false);
-  const router = useRouter();
+  const navigate = useNavigate();
 
   const handleDeleted = () => {
-    router.push("/souls");
-    router.refresh();
+    navigate({ to: "/souls" });
   };
 
   if (variant === "text") {
@@ -29,14 +28,14 @@ export function DeleteSoulButton({ soulName, variant = "icon", className }: Dele
           size="sm"
           onClick={() => setOpen(true)}
           className={className}
+          title="删除角色"
         >
-          <Trash2 className="h-4 w-4 mr-1" />
-          删除角色
+          <Trash2 className="h-4 w-4 text-red-500" />
         </Button>
         <DeleteSoulConfirmDialog
-          soulName={soulName}
           open={open}
           onOpenChange={setOpen}
+          soulName={soulName}
           onDeleted={handleDeleted}
         />
       </>
@@ -45,23 +44,19 @@ export function DeleteSoulButton({ soulName, variant = "icon", className }: Dele
 
   return (
     <>
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          e.preventDefault();
-          setOpen(true);
-        }}
-        className="rounded-md p-1.5 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+      <Button
+        variant="ghost"
+        size="icon"
+        className={className}
+        onClick={() => setOpen(true)}
         title="删除角色"
-        aria-label="删除角色"
       >
-        <Trash2 className="h-4 w-4" />
-      </button>
+        <Trash2 className="h-4 w-4 text-red-500" />
+      </Button>
       <DeleteSoulConfirmDialog
-        soulName={soulName}
         open={open}
         onOpenChange={setOpen}
+        soulName={soulName}
         onDeleted={handleDeleted}
       />
     </>

@@ -17,6 +17,7 @@ pub fn router() -> Router<Arc<AppState>> {
     Router::new()
         .route("/", post(start_possession))
         .route("/court", post(start_court_session))
+        .route("/business", post(start_business_session))
         .route("/analyze", post(analyze_task))
         .route("/ocr", post(ocr_upload))
         .route("/interrogate", post(start_interrogation))
@@ -287,6 +288,194 @@ fn build_dynamic_task_cards(case_type: CaseType) -> std::collections::HashMap<St
             "你是当事人本人。请用第一人称陈述：1. 到底发生了什么（按时间线）2. 你的感受和处境 3. 用 search_labor_law 查你的权利 4. 用 calculate_severance 算你该拿多少钱 5. 你有哪些证据 6. 你想要什么结果。",
     };
     cards.insert("劳动者之声".to_string(), worker_card.to_string());
+
+    cards
+}
+
+// ── 商业推演快捷入口 ──
+
+#[derive(Debug, Deserialize)]
+struct BusinessSessionRequest {
+    task: String,
+    #[serde(default)]
+    judgment: Option<String>,
+    #[serde(default)]
+    worry: Option<String>,
+    #[serde(default)]
+    unknown: Option<String>,
+}
+
+/// POST /possess/business — 一键启动商业沙盘推演
+/// 固定 5 角色（CEO/CFO/COO/CMO/管理咨询顾问）+ 动态 task_cards
+async fn start_business_session(
+    State(state): State<Arc<AppState>>,
+    Json(body): Json<BusinessSessionRequest>,
+) -> Result<Json<StartPossessionResponse>, (axum::http::StatusCode, Json<ApiError>)> {
+    if body.task.trim().is_empty() {
+        return Err((axum::http::StatusCode::BAD_REQUEST, Json(ApiError { error: "经营议题不能为空".into() })));
+    }
+
+    let business_souls = vec![
+        "CEO".to_string(),
+        "CFO".to_string(),
+        "COO".to_string(),
+        "CMO".to_string(),
+        "管理咨询顾问".to_string(),
+    ];
+
+    let scenario = detect_business_scenario(&body.task);
+    tracing::info!("Business scenario detected: {:?}", scenario);
+    let task_cards = build_business_task_cards(scenario);
+
+    tracing::info!("Starting business session: 5 roles");
+
+    let input = PossessionInput {
+        mode: Some(foundation::PossessionMode::Conference),
+        task: body.task,
+        souls: business_souls,
+        topic: None,
+        judgment: body.judgment,
+        worry: body.worry,
+        unknown: body.unknown,
+        interrogation_context: None,
+        task_cards,
+        search_topic: false,
+        search_results: None,
+    };
+
+    let (tx, rx) = tokio::sync::mpsc::channel::<possession::WsEvent>(256);
+    let session_id = state.engine.start_possession(input, tx).await.map_err(map_api_error)?;
+    tracing::info!("Business session created: {}", session_id);
+
+    let ws = state.engine.ws_manager().clone();
+    let sid = session_id.clone();
+    tokio::spawn(async move {
+        let mut rx = rx;
+        while let Some(event) = rx.recv().await {
+            ws.broadcast_system(&sid, &event);
+        }
+    });
+
+    Ok(Json(StartPossessionResponse {
+        ws_url: format!("/ws/possess/{}/main", session_id), session_id, mode: "conference".into(),
+    }))
+}
+
+/// 根据经营议题检测商业推演场景类型
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum BusinessScenario {
+    StrategicPlanning,   // 战略规划/市场扩张
+    FinancialDecision,   // 融资/投资/财务决策
+    OperationOptimization, // 运营优化/成本控制
+    ProductLaunch,       // 新品上市/产品规划
+    CrisisManagement,    // 危机管理/现金流断裂
+    GeneralBusiness,     // 通用
+}
+
+fn detect_business_scenario(task: &str) -> BusinessScenario {
+    let t = task;
+    if t.contains("战略") || t.contains("扩张") || t.contains("新市场") || t.contains("增长") || t.contains("竞争") || t.contains("定位") {
+        BusinessScenario::StrategicPlanning
+    } else if t.contains("融资") || t.contains("投资") || t.contains("贷款") || t.contains("上市") || t.contains("资本") || t.contains("估值") || t.contains("股东") {
+        BusinessScenario::FinancialDecision
+    } else if t.contains("成本") || t.contains("效率") || t.contains("供应链") || t.contains("库存") || t.contains("产能") || t.contains("降本") {
+        BusinessScenario::OperationOptimization
+    } else if t.contains("新品") || t.contains("产品") || t.contains("研发") || t.contains("上市") || t.contains("技术") || t.contains("创新") {
+        BusinessScenario::ProductLaunch
+    } else if t.contains("危机") || t.contains("亏损") || t.contains("破产") || t.contains("现金流断裂") || t.contains("崩塌") || t.contains("拯救") {
+        BusinessScenario::CrisisManagement
+    } else {
+        BusinessScenario::GeneralBusiness
+    }
+}
+
+fn build_business_task_cards(scenario: BusinessScenario) -> std::collections::HashMap<String, String> {
+    let mut cards = std::collections::HashMap::new();
+
+    // CEO 任务卡
+    let ceo_card = match scenario {
+        BusinessScenario::StrategicPlanning =>
+            "你是公司的CEO。本次推演议题是战略规划/市场扩张。请：1. 明确公司的战略定位和核心竞争力 2. 设定中长期经营目标（市场地位、营收规模）和年度目标 3. 提出具体的战略路径——是成本领先、差异化还是聚焦？4. 评估进入新市场的优先级和节奏 5. 明确资源分配的总体原则。你的决策将影响其他职能部门的计划。",
+        BusinessScenario::FinancialDecision =>
+            "你是公司的CEO。本次推演议题是融资/投资决策。请：1. 明确公司的资本战略——为什么需要融资/为什么要投资 2. 评估不同融资方案对公司控制权和经营自主权的影响 3. 设定财务目标——期望的资本回报率和风险容忍度 4. 平衡短期资金需求和长期战略布局 5. 做出最终决策并说明理由。",
+        BusinessScenario::OperationOptimization =>
+            "你是公司的CEO。本次推演议题是运营优化/成本控制。请：1. 明确运营优化的战略目标——是追求利润率提升还是规模扩张 2. 评估不同优化方案对客户体验和员工士气的潜在影响 3. 设定成本降低的目标和底线（不能低于什么标准）4. 在运营效率和长期投入之间做出决断 5. 明确各职能部门的优先级。",
+        BusinessScenario::ProductLaunch =>
+            "你是公司的CEO。本次推演议题是新产品上市/产品规划。请：1. 明确新产品的战略定位——是市场领先还是市场跟随？2. 设定新产品的市场目标和时间表 3. 评估不同产品路线图的资源需求和风险 4. 决定产品开发和上市的资源投入力度 5. 平衡现有产品线和创新产品的资源配置。",
+        BusinessScenario::CrisisManagement =>
+            "你是公司的CEO。本次推演议题是危机管理/企业经营困境。请：1. 坦诚评估企业当前的危机严重程度 2. 提出紧急应对方案——止血、保现金流、稳定核心团队 3. 设定分阶段的复苏目标 4. 评估不同方案的风险和代价 5. 做出果断决策——这是一个需要领导力的时刻。",
+        BusinessScenario::GeneralBusiness =>
+            "你是公司的CEO。请从全局战略角度分析当前的经营议题：1. 明确核心问题和关键决策点 2. 设定清晰的目标和衡量标准 3. 提出战略方向和资源分配原则 4. 听取各职能部门的分析后做出最终决策。",
+    };
+    cards.insert("CEO".to_string(), ceo_card.to_string());
+
+    // CFO 任务卡
+    let cfo_card = match scenario {
+        BusinessScenario::StrategicPlanning =>
+            "你是公司的CFO。本次推演议题是战略规划/市场扩张。请：1. 测算扩张方案的资金需求（市场开发费用、产能建设投资、运营资金）2. 分析不同扩张节奏对现金流的影响 3. 评估融资方案——内源性融资 vs 外部融资的配比 4. 用财务指标（ROE、EVA）评估战略方案的可行性 5. 明确财务风险底线——不能突破的负债率和现金流安全线。",
+        BusinessScenario::FinancialDecision =>
+            "你是公司的CFO。本次推演议题是融资/投资决策。请：1. 分析当前资本结构（资产负债率、长短期负债配比）2. 测算不同融资方案的资金成本和财务风险 3. 用EVA评估投资方案的可行性——税后净营业利润-资本成本 4. 用杜邦公式分析不同方案对ROE的影响 5. 关注现金流预测——确保公司在任何时点不会断裂。",
+        BusinessScenario::OperationOptimization =>
+            "你是公司的CFO。本次推演议题是运营优化/成本控制。请：1. 用ABC成本法分析各产品的真实盈利能力——直接成本+间接成本分摊 2. 识别费用结构中的不合理支出 3. 测算不同优化方案的财务影响 4. 建议需要削减的费用项和保留的投资项 5. 设定明确的财务指标目标。",
+        BusinessScenario::ProductLaunch =>
+            "你是公司的CFO。本次推演议题是新产品上市/产品规划。请：1. 计算新产品的全周期投资回报——研发费用、产能建设、市场推广、预期收益 2. 评估不同产品路线图的资金需求和时间安排 3. 分析各产品的毛利率和净利率 4. 用波士顿矩阵辅助分析产品组合的财务健康度 5. 提出财务维度的优先级建议。",
+        BusinessScenario::CrisisManagement =>
+            "你是公司的CFO。本次推演议题是危机管理/企业经营困境。请：1. 立即评估现金流状况——可用现金、未来3个月的现金流入/流出 2. 列出紧急融资方案——应收账款贴现、短期贷款、出售资产 3. 测算各项费用的削减空间 4. 分析最坏情况下的生存期限（runway）5. 提出财务维度的紧急行动方案。",
+        BusinessScenario::GeneralBusiness =>
+            "你是公司的CFO。请从财务角度分析当前经营议题：1. 分析经营决策对三张报表的影响 2. 评估现金流风险和融资需求 3. 计算关键财务指标（毛利率、ROE、EVA）4. 提出财务维度的建议和风险警示。",
+    };
+    cards.insert("CFO".to_string(), cfo_card.to_string());
+
+    // COO 任务卡
+    let coo_card = match scenario {
+        BusinessScenario::StrategicPlanning =>
+            "你是公司的COO。本次推演议题是战略规划/市场扩张。请：1. 评估现有产能与新市场目标的匹配度——需要新增多少产能？2. 建议产能建设的类型（手工线/半自动线/全自动线）和节奏 3. 分析供应链的承载能力——原材料供应是否有瓶颈？4. 评估不同扩张方案的运营风险 5. 测算运营效率指标和交付能力。",
+        BusinessScenario::FinancialDecision =>
+            "你是公司的COO。本次推演议题是融资/投资决策。请：1. 如果融资用于扩产，评估新增产能的投资效率和建设周期 2. 分析运营资金需求与融资方案的匹配度 3. 提出运营维度的资金使用优先级 4. 评估投资方案对运营效率的实际拉动效果。",
+        BusinessScenario::OperationOptimization =>
+            "你是公司的COO。本次推演议题是运营优化/成本控制。请：1. 用资本周转分析找出运营中的资金占用点——库存周转率、应收账期、生产周期 2. 分析每条生产线的效率和利用率 3. 提出具体的降本增效方案（供应链优化、库存管理改进、产线调整）4. 评估不同优化方案对交付能力的影响 5. 设定运营效率指标目标。",
+        BusinessScenario::ProductLaunch =>
+            "你是公司的COO。本次推演议题是新产品上市/产品规划。请：1. 分析新产品对现有产能的影响——需要新建产线还是改造现有产线？2. 计算产品转产的周期和成本 3. 评估原材料采购的风险——新材料的供应是否稳定？4. 提出产能建设的时间表和里程碑 5. 评估供应链的适配性。",
+        BusinessScenario::CrisisManagement =>
+            "你是公司的COO。本次推演议题是危机管理/企业经营困境。请：1. 立即评估运营中的止血点——哪些业务可以快速收缩？2. 提出库存变现的方案——成品库存快速出货、原材料订单可否取消或延期 3. 评估裁员/缩减产能的运营影响 4. 建议保留的核心业务和可剥离的非核心业务 5. 提出运营维度的紧急措施。",
+        BusinessScenario::GeneralBusiness =>
+            "你是公司的COO。请从运营角度分析当前经营议题：1. 评估产能与需求的匹配度 2. 分析研产销的平衡状况 3. 提出运营效率改进建议 4. 识别供应链和交付风险。",
+    };
+    cards.insert("COO".to_string(), coo_card.to_string());
+
+    // CMO 任务卡
+    let cmo_card = match scenario {
+        BusinessScenario::StrategicPlanning =>
+            "你是公司的CMO。本次推演议题是战略规划/市场扩张。请：1. 分析各市场的竞争格局和增长潜力 2. 用波士顿矩阵评估现有产品组合 3. 提出新市场的进入策略和营销投入规划 4. 分析竞争对手的可能反应和应对策略 5. 评估市场份额目标和可行性。",
+        BusinessScenario::FinancialDecision =>
+            "你是公司的CMO。本次推演议题是融资/投资决策。请：1. 从市场角度评估投资方案的市场前景 2. 分析营销投入与订单获取的关系——每M投入预计可激活多少订单 3. 评估市场开发投入的预期回报 4. 从客户/市场角度提供决策参考。",
+        BusinessScenario::OperationOptimization =>
+            "你是公司的CMO。本次推演议题是运营优化/成本控制。请：1. 分析各产品和各市场的利润率差异 2. 建议优化产品组合——收缩低利润产品、聚焦高利润产品 3. 用波士顿矩阵定位产品优先级 4. 评估降本方案对市场竞争力的影响——过度降本是否会影响品牌和客户？5. 提出市场维度的优化建议。",
+        BusinessScenario::ProductLaunch =>
+            "你是公司的CMO。本次推演议题是新产品上市/产品规划。请：1. 分析目标市场的需求规模和增长趋势 2. 确定新产品的市场定位和定价策略 3. 用波士顿矩阵分析新产品在现有产品组合中的角色 4. 制定上市推广计划——营销投入、渠道策略、时间表 5. 评估竞争对手的可能反应。",
+        BusinessScenario::CrisisManagement =>
+            "你是公司的CMO。本次推演议题是危机管理/企业经营困境。请：1. 评估当前市场的订单机会——哪些市场仍有需求？2. 提出快速变现的营销策略——折扣促销、清仓出货 3. 分析保留哪些市场、哪些市场可以暂时退出 4. 评估品牌声誉受损的风险和修复方案 5. 提出市场维度的紧急行动。",
+        BusinessScenario::GeneralBusiness =>
+            "你是公司的CMO。请从市场角度分析当前经营议题：1. 分析市场需求和竞争格局 2. 用波士顿矩阵评估产品组合 3. 提出营销策略和产品规划建议 4. 识别市场机会和风险。",
+    };
+    cards.insert("CMO".to_string(), cmo_card.to_string());
+
+    // 管理咨询顾问 任务卡
+    let consultant_card = match scenario {
+        BusinessScenario::StrategicPlanning =>
+            "你是独立的管理咨询顾问。本次推演议题是战略规划/市场扩张。请：1. 用杜邦公式分析当前ROE的驱动因素——是利润率高、周转快还是杠杆用得好？2. 对标行业最佳实践，评估企业当前的战略合理性 3. 用SWOT分析识别战略选择中的盲区 4. 评估不同战略方案的EVA——是否在为股东创造真实价值？5. 提出独立、客观的战略建议——不怕说真话。",
+        BusinessScenario::FinancialDecision =>
+            "你是独立的管理咨询顾问。本次推演议题是融资/投资决策。请：1. 用EVA评估融资/投资方案的经济合理性 2. 分析不同方案对公司长期竞争力的影响 3. 用财务杠杆分析评估风险承受能力 4. 对标行业通行的资本结构 5. 提出独立的专业建议。",
+        BusinessScenario::OperationOptimization =>
+            "你是独立的管理咨询顾问。本次推演议题是运营优化/成本控制。请：1. 用ABC成本法诊断各产品的真实成本结构 2. 对标行业运营效率基准 3. 识别运营中容易被忽略的隐性成本 4. 评估不同优化方案的长期和短期影响 5. 提出系统性改进建议——不只是头痛医头。",
+        BusinessScenario::ProductLaunch =>
+            "你是独立的管理咨询顾问。本次推演议题是新产品上市/产品规划。请：1. 用波士顿矩阵分析新产品在现有产品组合中的定位 2. 评估产品路线图与市场需求的匹配度 3. 对标同行新品上市的常见做法和成功概率 4. 分析产品组合的风险分散程度 5. 提出独立的产品战略建议。",
+        BusinessScenario::CrisisManagement =>
+            "你是独立的管理咨询顾问。本次推演议题是危机管理/企业经营困境。请：1. 客观诊断危机的根本原因——是战略失误、运营低效还是市场环境变化？2. 对标同行危机处理的经验和教训 3. 提出分阶段的拯救方案——紧急止血→稳定运营→战略转型 4. 评估不同拯救方案的成功概率和风险 5. 坦诚指出管理团队可能存在的决策盲区。",
+        BusinessScenario::GeneralBusiness =>
+            "你是独立的管理咨询顾问。请从专业第三方视角分析当前经营议题：1. 诊断核心问题 2. 用管理工具（杜邦分析、波士顿矩阵、ABC成本法）辅助分析 3. 对标最佳实践 4. 提出独立的专业建议。",
+    };
+    cards.insert("管理咨询顾问".to_string(), consultant_card.to_string());
 
     cards
 }
@@ -1601,7 +1790,8 @@ fn spawn_follow_up_agent(
                         }
                     }
                 } else {
-                    match possession::stream::stream_synthesis(rx, &session_id, &ws).await {
+                    let (dummy_tx, _) = tokio::sync::mpsc::channel::<possession::WsEvent>(1);
+                    match possession::stream::stream_synthesis(rx, &session_id, &ws, &dummy_tx).await {
                         Ok((content, usage)) => {
                             let msg = foundation::Message {
                                 id: uuid::Uuid::new_v4().to_string(),

@@ -1,0 +1,39 @@
+[package]
+name = "soul-agent"
+version = "0.1.0"
+edition = "2021"
+description = "Soul Agent — multi-agent AI orchestration SDK. Conference, debate, single-agent modes with multi-provider LLM support."
+license = "MIT"
+repository = "https://github.com/earendil-works/pi"
+keywords = ["ai", "llm", "multi-agent", "orchestration", "agent"]
+
+[lib]
+name = "soul_agent"
+path = "src/lib.rs"
+
+[[bin]]
+name = "soul"
+path = "src/main.rs"
+
+[dependencies]
+possession = { path = "../possession" }
+ai-gateway = { path = "../ai-gateway" }
+foundation = { path = "../foundation" }
+registry = { path = "../registry" }
+async-trait = { workspace = true }
+chrono = { workspace = true }
+tokio = { workspace = true }
+serde_json = { workspace = true }
+serde = { workspace = true }
+serde_yaml = "0.9"
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
+clap = { version = "4", features = ["derive"] }
+colored = "2"
+indicatif = "0.17"
+ratatui = "0.29"
+crossterm = "0.28"
+tui-textarea = "0.7"
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["full"] }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }

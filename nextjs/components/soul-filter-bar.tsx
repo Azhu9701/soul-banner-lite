@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useNavigate, useSearch } from "@tanstack/react-router";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { useDebouncedCallback } from "use-debounce";
@@ -11,21 +11,24 @@ interface SoulFilterBarProps {
 }
 
 export function SoulFilterBar({ totalCount }: SoulFilterBarProps) {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const [query, setQuery] = useState(searchParams.get("q") || "");
+  const navigate = useNavigate();
+  const search = useSearch({ strict: false }) as Record<string, string>;
+  const [query, setQuery] = useState(search?.q || "");
 
   const updateFilter = useCallback(
     (key: string, value: string | null) => {
-      const params = new URLSearchParams(searchParams.toString());
+      const params = new URLSearchParams();
+      for (const [k, v] of Object.entries(search || {})) {
+        if (v) params.set(k, v);
+      }
       if (value) {
         params.set(key, value);
       } else {
         params.delete(key);
       }
-      router.replace(`/souls?${params.toString()}`);
+      navigate({ to: `/souls?${params.toString()}`, replace: true });
     },
-    [router, searchParams]
+    [navigate, search]
   );
 
   const debouncedSearch = useDebouncedCallback((value: string) => {

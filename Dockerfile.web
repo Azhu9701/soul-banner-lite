@@ -9,39 +9,12 @@ RUN pnpm install --frozen-lockfile --ignore-scripts && \
 
 COPY nextjs/ ./
 
-# 删除 turbopack 配置，因为 Docker 中该配置会导致构建问题
-# 使用 node 脚本精确删除整个 turbopack 块（包括嵌套大括号）
-RUN if [ -f next.config.ts ]; then \
-      node -e " \
-        const fs = require('fs'); \
-        const c = fs.readFileSync('next.config.ts', 'utf8').split('\n'); \
-        const o = []; \
-        let i = 0; \
-        while (i < c.length) { \
-          const l = c[i]; \
-          if (l.includes('turbopack:')) { \
-            let d = (l.match(/\{/g) || []).length - (l.match(/\}/g) || []).length; \
-            i++; \
-            while (i < c.length && d > 0) { \
-              d += (c[i].match(/\{/g) || []).length - (c[i].match(/\}/g) || []).length; \
-              i++; \
-            } \
-            if (i < c.length && c[i].trim().startsWith('},')) i++; \
-            continue; \
-          } \
-          o.push(c[i]); \
-          i++; \
-        } \
-        fs.writeFileSync('next.config.ts', o.join('\n')); \
-      "; \
-    fi
+ARG VITE_API_URL=/api/v1
+ENV VITE_API_URL=${VITE_API_URL}
 
-ARG NEXT_PUBLIC_API_URL=/api/v1
-ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
-
-RUN npx next build
+RUN npx vite build
 
 ENV NODE_ENV=production
 EXPOSE 3000
 
-CMD ["npx", "next", "start", "-p", "3000"]
+CMD ["node", "dist/server/server.js"]

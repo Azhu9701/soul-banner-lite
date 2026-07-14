@@ -88,3 +88,10 @@ dist/
 # CodeGraph index
 .codegraph/
 graphify-out/
+
+# Godot editor cache
+.godot/
+.godot/
+.superpowers/
+.zcode/plans/
+godot/ui/reference.jpg

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Pencil, Trash2, Check, X, Download } from "lucide-react";
@@ -10,7 +10,7 @@ import { renameSession, deleteSession, exportSessionMarkdown } from "@/lib/api";
 import { triggerSessionsUpdate } from "@/components/sidebar-sessions";
 
 export default function SessionActions({ sessionId, title }: { sessionId: string; title: string }) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const [editing, setEditing] = useState(false);
   const [newTitle, setNewTitle] = useState(title);
   const [error, setError] = useState("");
@@ -18,7 +18,7 @@ export default function SessionActions({ sessionId, title }: { sessionId: string
 
   const onRename = async () => {
     if (!newTitle.trim()) return;
-    try { await renameSession(sessionId, newTitle.trim()); triggerSessionsUpdate(); setEditing(false); router.refresh(); }
+    try { await renameSession(sessionId, newTitle.trim()); triggerSessionsUpdate(); setEditing(false); }
     catch (e: unknown) { setError(e instanceof Error ? e.message : String(e)); }
   };
 
@@ -53,7 +53,7 @@ export default function SessionActions({ sessionId, title }: { sessionId: string
         icon={<Trash2 className="h-4 w-4 text-red-500" />}
         confirmText="确认删除"
         title="删除会话"
-        onConfirm={async () => { await deleteSession(sessionId); triggerSessionsUpdate(); router.push("/sessions"); }}
+        onConfirm={async () => { await deleteSession(sessionId); triggerSessionsUpdate(); navigate({ to: "/sessions" }); }}
       />
       {error && <span className="text-xs text-red-500 ml-2">{error}</span>}
     </div>

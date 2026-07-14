@@ -136,41 +136,48 @@ pub async fn distill_session(
         ],
     };
 
-    // 自动选择可用 provider，不再硬编码 DeepSeek
+    // 自动选择可用 provider
     let provider = gateway.pick_provider().unwrap_or(Provider::DeepSeek);
     tracing::info!("distill using provider: {:?}", provider);
+
+    // DeepSeek 不支持 structured output (response_format)，跳过
+    let use_structured = !matches!(provider, Provider::DeepSeek);
 
     let config = CallConfig {
         temperature: 0.3,
         max_tokens: 4096,
         stream: false,
-        model: None, // 使用 provider 默认模型
-        thinking_enabled: Some(false), // 蒸馏必须关闭思考，避免在 content 中输出思考过程
-        structured_output: Some(foundation::StructuredOutputConfig {
-            enabled: true,
-            json_schema: Some(serde_json::json!({
-                "type": "object",
-                "properties": {
-                    "summary": { "type": "string" },
-                    "observations": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "type": { "type": "string", "enum": ["session", "discovery", "decision", "bugfix", "feature", "refactor", "change", "security"] },
-                                "title": { "type": "string" },
-                                "content": { "type": "string" },
-                                "soul": { "type": ["string", "null"] },
-                                "seq": { "type": ["integer", "null"] },
-                                "confidence": { "type": ["number", "null"] }
-                            },
-                            "required": ["type", "title", "content"]
+        model: None,
+        thinking_enabled: Some(false),
+        structured_output: if use_structured {
+            Some(foundation::StructuredOutputConfig {
+                enabled: true,
+                json_schema: Some(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "summary": { "type": "string" },
+                        "observations": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "type": { "type": "string", "enum": ["session", "discovery", "decision", "bugfix", "feature", "refactor", "change", "security"] },
+                                    "title": { "type": "string" },
+                                    "content": { "type": "string" },
+                                    "soul": { "type": ["string", "null"] },
+                                    "seq": { "type": ["integer", "null"] },
+                                    "confidence": { "type": ["number", "null"] }
+                                },
+                                "required": ["type", "title", "content"]
+                            }
                         }
-                    }
-                },
-                "required": ["summary", "observations"]
-            })),
-        }),
+                    },
+                    "required": ["summary", "observations"]
+                })),
+            })
+        } else {
+            None
+        },
         ..Default::default()
     };
 

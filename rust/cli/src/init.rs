@@ -69,7 +69,7 @@ fn write_config(project_dir: &Path, args: &InitArgs) -> Result<(), Box<dyn std::
         "# Server configuration\n\
          server_host: \"127.0.0.1\"\n\
          server_port: {port}\n\
-         nextjs_port: {frontend_port}\n\
+         web_port: {frontend_port}\n\
          \n\
          # Data paths\n\
          data_dir: \"./data\"\n\

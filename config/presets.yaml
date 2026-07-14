@@ -1,0 +1,50 @@
+# Soul Agent — 决策预设
+# soul --preset <name> "your decision question"
+
+tech-architecture:
+  label: "技术架构决策"
+  souls: ["技术实现师", "需求分析师", "体验检查员"]
+  mode: conference
+  description: "从可维护性、扩展性、安全性评估技术方案"
+
+code-review:
+  label: "代码审查"
+  souls: ["技术实现师", "体验检查员"]
+  mode: debate
+  description: "从正确性、可读性、性能审查代码"
+
+business-strategy:
+  label: "商业策略"
+  souls: ["CEO", "CFO", "CMO", "COO"]
+  mode: conference
+  description: "商业决策的系统性分析：战略、财务、市场、运营"
+
+product-decision:
+  label: "产品决策"
+  souls: ["需求分析师", "技术实现师", "体验检查员"]
+  mode: conference
+  description: "产品功能优先级、MVP 范围、UX 决策"
+
+labor-dispute:
+  label: "劳动争议"
+  souls: ["仲裁法官", "原告律师", "被告律师", "专家证人", "劳动者之声"]
+  mode: conference
+  description: "劳动争议案件的多角色庭审"
+
+startup-dilemma:
+  label: "创业两难"
+  souls: ["CEO", "CFO", "技术实现师", "CMO"]
+  mode: conference
+  description: "创业资源分配和战略方向决策"
+
+pricing:
+  label: "定价策略"
+  souls: ["CMO", "CFO", "管理咨询顾问"]
+  mode: conference
+  description: "产品/服务定价决策"
+
+crisis:
+  label: "危机应对"
+  souls: ["CEO", "CFO", "COO", "管理咨询顾问"]
+  mode: conference
+  description: "现金流危机、公关危机、竞争威胁应对"

@@ -88,15 +88,15 @@ services:
       retries: 5
       start_period: 30s
 
-  # ── Next.js 前端 ────────────────────────────────────
+  # ── TanStack Start 前端 ────────────────────────────────────
   web:
     image: soul-banner-web:latest
     build:
       context: .
       dockerfile: Dockerfile.web
       args:
-        # NEXT_PUBLIC_* 是构建时变量，必须在 build.args 中传递
-        - NEXT_PUBLIC_API_URL=/api/v1
+        # VITE_API_URL 是构建时变量，必须在 build.args 中传递
+        - VITE_API_URL=/api/v1
     restart: unless-stopped
     environment:
       - NODE_ENV=production
