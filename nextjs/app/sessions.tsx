@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, Outlet, useLocation } from '@tanstack/react-router'
 import { useEffect, useState } from "react"
 import { fetchSessions, type SessionSummary } from "@/lib/api"
 import { SessionTimeline } from "@/components/session-timeline"
@@ -9,6 +9,11 @@ export const Route = createFileRoute('/sessions')({
 })
 
 function SessionsPage() {
+  const location = useLocation()
+  if (location.pathname !== '/sessions') {
+    return <Outlet />
+  }
+
   const [sessions, setSessions] = useState<SessionSummary[]>([])
   const [loading, setLoading] = useState(true)
 

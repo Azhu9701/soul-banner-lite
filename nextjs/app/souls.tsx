@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Outlet, useLocation, Link } from '@tanstack/react-router'
 import { useEffect, useState } from "react"
 import { fetchSouls, type SoulListEntry } from "@/lib/api"
 import { SoulCardGrid } from "@/components/soul-card-grid"
@@ -12,6 +12,11 @@ export const Route = createFileRoute('/souls')({
 })
 
 function SoulListPage() {
+  const location = useLocation()
+  if (location.pathname !== '/souls') {
+    return <Outlet />
+  }
+
   const [souls, setSouls] = useState<SoulListEntry[]>([])
   const [loading, setLoading] = useState(true)
 
