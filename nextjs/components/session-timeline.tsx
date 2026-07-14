@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Link } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { Trash2, Brain, Users, ChevronRight, Download, CheckSquare, Square, X } from "lucide-react";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { deleteSession, exportSessionMarkdown, fetchSessions, batchDeleteSessions } from "@/lib/api";
@@ -60,6 +60,8 @@ function SessionRow({
   selected: boolean;
   onToggleSelect: (id: string) => void;
 }) {
+  const navigate = useNavigate();
+
   const handleExport = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -80,7 +82,10 @@ function SessionRow({
       e.preventDefault();
       e.stopPropagation();
       onToggleSelect(s.id);
+      return
     }
+    e.preventDefault()
+    navigate({ to: "/sessions/$id", params: { id: s.id } })
   };
 
   const handleCheckboxClick = (e: React.MouseEvent) => {
@@ -90,9 +95,8 @@ function SessionRow({
   };
 
   return (
-    <Link
-      to="/sessions/$id"
-      params={{ id: s.id }}
+    <a
+      href={`/sessions/${s.id}`}
       onClick={handleClick}
       className={`flex items-center gap-3 p-3 rounded-lg border transition-all hover:shadow-md group relative ${
         selectMode && selected ? "ring-2 ring-primary bg-primary/5" : ""
@@ -178,7 +182,7 @@ function SessionRow({
           />
         </div>
       )}
-    </Link>
+    </a>
   );
 }
 
@@ -257,9 +261,9 @@ export function SessionTimeline({ sessions: initialSessions }: SessionTimelinePr
         <Brain className="h-12 w-12 text-muted-foreground mb-4" />
         <h3 className="text-sm font-semibold text-muted-foreground">暂无会话记录</h3>
         <p className="text-xs text-muted-foreground mt-1">开始你的第一次庭审之旅</p>
-        <Link to="/possess" className="mt-4 text-xs text-primary hover:underline">
+        <a href="/possess" className="mt-4 text-xs text-primary hover:underline">
           前往庭审
-        </Link>
+        </a>
       </div>
     );
   }

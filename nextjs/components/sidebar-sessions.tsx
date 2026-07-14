@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { useLocation, useNavigate } from "@tanstack/react-router";
 import { Trash2, Pencil, Check, X, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fetchSessions, deleteSession, renameSession, type SessionSummary } from "@/lib/api";
