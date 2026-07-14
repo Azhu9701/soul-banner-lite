@@ -1790,7 +1790,8 @@ fn spawn_follow_up_agent(
                         }
                     }
                 } else {
-                    match possession::stream::stream_synthesis(rx, &session_id, &ws).await {
+                    let (dummy_tx, _) = tokio::sync::mpsc::channel::<possession::WsEvent>(1);
+                    match possession::stream::stream_synthesis(rx, &session_id, &ws, &dummy_tx).await {
                         Ok((content, usage)) => {
                             let msg = foundation::Message {
                                 id: uuid::Uuid::new_v4().to_string(),

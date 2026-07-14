@@ -185,6 +185,7 @@ pub async fn stream_synthesis(
     mut rx: mpsc::Receiver<Result<Chunk>>,
     session_id: &str,
     ws: &WsSessionManager,
+    system_tx: &mpsc::Sender<WsEvent>,
 ) -> Result<(String, UsageStats)> {
     tracing::info!("Starting stream_synthesis for session: {}", session_id);
     let mut content = String::new();
@@ -204,17 +205,15 @@ pub async fn stream_synthesis(
                 }
                 if !chunk.content.is_empty() || chunk.reasoning_content.is_some() {
                     chunk_count += 1;
-                    tracing::debug!("Broadcasting synthesis chunk #{}: content={:?}, reasoning={:?}", chunk_count, chunk.content, chunk.reasoning_content);
-                    ws.broadcast_system(
-                        session_id,
-                        &WsEvent {
-                            event_type: WsEventType::SynthesisChunk,
-                            payload: chunk.content,
-                            reasoning_content: chunk.reasoning_content,
-                            soul_name: None,
-                            seq,
-                        },
-                    );
+                    let event = WsEvent {
+                        event_type: WsEventType::SynthesisChunk,
+                        payload: chunk.content,
+                        reasoning_content: chunk.reasoning_content,
+                        soul_name: None,
+                        seq,
+                    };
+                    ws.broadcast_system(session_id, &event);
+                    let _ = system_tx.try_send(event).ok();
                     seq += 1;
                 }
                 // 检测 max_tokens 截断
@@ -231,16 +230,15 @@ pub async fn stream_synthesis(
     }
 
     tracing::info!("Stream complete, {} chunks, total content length: {}", chunk_count, content.len());
-    ws.broadcast_system(
-        session_id,
-        &WsEvent {
-            event_type: WsEventType::SynthesisDone,
-            payload: String::new(),
-            reasoning_content: None,
-            soul_name: None,
-            seq,
-        },
-    );
+    let done_event = WsEvent {
+        event_type: WsEventType::SynthesisDone,
+        payload: String::new(),
+        reasoning_content: None,
+        soul_name: None,
+        seq,
+    };
+    ws.broadcast_system(session_id, &done_event);
+    let _ = system_tx.try_send(done_event).ok();
 
     if truncated {
         content.push_str("\n\n> ⚠️ [系统提示] 综合报告因长度限制被截断。");

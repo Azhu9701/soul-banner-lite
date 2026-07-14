@@ -429,7 +429,7 @@ pub async fn run(
         let synthesis_req = LLMRequest { provider: synthesis_provider, prompt: synthesis_prompt, config: synthesis_config };
 
         if let Ok(rx) = gateway.call(&synthesis_req) {
-            if let Ok((content, synth_usage)) = stream::stream_synthesis(rx, session_id, ws).await {
+            if let Ok((content, synth_usage)) = stream::stream_synthesis(rx, session_id, ws, system_tx).await {
                 let per_soul_costs: Vec<(String, foundation::UsageStats, Option<String>)> = outputs.iter()
                     .filter(|o| o.error.is_none())
                     .map(|o| (o.soul_name.clone(), o.usage.clone(), None))
