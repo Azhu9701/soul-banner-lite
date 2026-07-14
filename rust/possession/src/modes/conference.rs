@@ -225,7 +225,7 @@ pub async fn run(
     for round in 1..max_rounds {
         // 以所有已产生的输出为检测源
         let outputs_for_detection = &outputs;
-        let mut detector = CrossDetector::new();
+        let detector = CrossDetector::new();
         for o in outputs_for_detection {
             detector.register_soul(o.soul_name.clone());
             if !o.content.is_empty() {
@@ -271,7 +271,7 @@ pub async fn run(
             .collect();
 
         for (soul_name, contexts) in &collision_context {
-            if let Some(output) = output_map.get(soul_name) {
+            if let Some(_output) = output_map.get(soul_name) {
                 if let Ok(profile) = registry.get_soul(soul_name) {
                     let provider = gateway.pick_provider().unwrap_or(foundation::Provider::DeepSeek);
                     let config = CallConfig::default().with_reasoning_effort(ReasoningEffort::Think);

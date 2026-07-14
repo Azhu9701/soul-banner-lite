@@ -10,8 +10,8 @@ pub async fn stream_single_soul_with_provider(
     session_id: &str,
     soul_name: &str,
     ws: &WsSessionManager,
-    gateway: &GatewayRegistry,
-    provider: &Provider,
+    _gateway: &GatewayRegistry,
+    _provider: &Provider,
 ) -> SoulOutput {
     let mut content = String::new();
     let mut usage = UsageStats::default();

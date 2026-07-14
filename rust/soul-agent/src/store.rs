@@ -14,7 +14,7 @@ use foundation::{
     SoulProfile, SoulRevision, SoulRevisionFilter,
     Registry, Annotation,
     BlindSpot, BlindSpotFilter,
-    KnowledgeCard, KnowledgeCardFilter, KnowledgeTopic,
+    KnowledgeCard, KnowledgeCardFilter,
     RevisionProposal, ProposalStatus,
 };
 

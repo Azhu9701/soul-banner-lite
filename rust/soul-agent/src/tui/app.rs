@@ -1,4 +1,4 @@
-use possession::{WsEvent, WsEventType};
+use possession::WsEvent;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Tab {
@@ -19,6 +19,7 @@ pub struct App {
     pub current_round: usize,
     pub total_rounds: usize,
     pub collision_count: usize,
+    #[allow(dead_code)]
     pub total_tokens: u64,
 }
 
@@ -50,7 +51,7 @@ impl App {
             .filter(|e| matches!(e.event_type, possession::WsEventType::Collision))
             .count();
 
-        let tokens: u64 = 0; // TODO: parse from Cost events
+        let _tokens: u64 = 0; // TODO: parse from Cost events
 
         (rounds, collisions, 0u64)
     }

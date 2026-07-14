@@ -263,6 +263,7 @@ impl Gateway for ClaudeClient {
                 return;
             }
 
+            #[allow(unused_imports)]
             use futures::StreamExt;
             // 非流式：读取完整响应，解析 JSON body
             let body_text = response.text().await.unwrap_or_default();

@@ -9,7 +9,7 @@ use ui::draw;
 use std::io;
 use std::sync::Arc;
 
-use crossterm::event::{self, Event, KeyCode, KeyEventKind, KeyModifiers};
+use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen};
 use crossterm::ExecutableCommand;
 use ratatui::backend::CrosstermBackend;
@@ -132,13 +132,13 @@ async fn run_input_mode(
 
     let mut task_input = String::new();
     let mut cursor: usize = 0;
-    let mut help = String::from("Enter:开始  Tab:选Soul  q:退出");
+    let help = String::from("Enter:开始  Tab:选Soul  q:退出");
 
     loop {
         terminal.draw(|f| {
-            use ratatui::layout::{Constraint, Direction, Layout, Rect};
-            use ratatui::style::{Color, Modifier, Style, Stylize};
-            use ratatui::text::{Line, Span, Text};
+            use ratatui::layout::{Constraint, Direction, Layout};
+            use ratatui::style::{Color, Style};
+            use ratatui::text::Text;
             use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
 
             let area = f.area();
