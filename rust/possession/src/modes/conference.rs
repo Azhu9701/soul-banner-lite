@@ -154,11 +154,12 @@ pub async fn run(
         let prompt = req.prompt.clone();
         let config = req.config.clone();
         let detector = cross_detector.clone();
+        let tx = system_tx.clone();
         set.spawn(async move {
             run_soul_with_tools(
                 &gw, &provider, &prompt, &config,
                 &s_id, &soul_name, &ws_c, &tr,
-                detector,
+                detector, &tx,
             ).await
         });
     }
@@ -333,11 +334,12 @@ pub async fn run(
             let prompt = req.prompt.clone();
             let config = req.config.clone();
             let detector = CrossDetector::new();
+            let tx2 = system_tx.clone();
             round_set.spawn(async move {
                 run_soul_with_tools(
                     &gw, &provider, &prompt, &config,
                     &s_id, &soul_name, &ws_c, &tr,
-                    detector,
+                    detector, &tx2,
                 ).await
             });
         }
@@ -659,6 +661,7 @@ async fn run_soul_with_tools(
     ws: &WsSessionManager,
     tool_registry: &crate::tools::ToolRegistry,
     detector: CrossDetector,
+    system_tx: &mpsc::Sender<WsEvent>,
 ) -> SoulOutput {
     let max_rounds = if let Some(tools) = &config.tools {
         let names: Vec<String> = tools.iter().map(|t| t.function.name.clone()).collect();
@@ -722,6 +725,7 @@ async fn run_soul_with_tools(
             &name,
             ws,
             detector.clone(),
+            system_tx,
         ).await;
 
         if output.error.is_some() {
@@ -883,6 +887,7 @@ async fn stream_single_soul_with_detection_with_provider(
     soul_name: &str,
     ws: &WsSessionManager,
     detector: CrossDetector,
+    system_tx: &mpsc::Sender<WsEvent>,
 ) -> SoulOutput {
     let mut content = String::new();
     let mut usage = foundation::UsageStats::default();
@@ -903,17 +908,15 @@ async fn stream_single_soul_with_detection_with_provider(
                 if !chunk.content.is_empty() {
                     content.push_str(&chunk.content);
 
-                    ws.broadcast_soul(
-                        session_id,
-                        &name,
-                        &WsEvent {
-                            event_type: WsEventType::SoulChunk,
-                            payload: chunk.content.clone(),
-                            reasoning_content: chunk.reasoning_content.clone(),
-                            soul_name: Some(name.clone()),
-                            seq,
-                },
-                    );
+                    let chunk_event = WsEvent {
+                        event_type: WsEventType::SoulChunk,
+                        payload: chunk.content.clone(),
+                        reasoning_content: chunk.reasoning_content.clone(),
+                        soul_name: Some(name.clone()),
+                        seq,
+                    };
+                    ws.broadcast_soul(session_id, &name, &chunk_event);
+                    let _ = system_tx.try_send(chunk_event).ok();
 
                     // 直接调用检测器，不走广播通道
                     detector.add_token(&name, &chunk.content);
@@ -921,19 +924,17 @@ async fn stream_single_soul_with_detection_with_provider(
                     seq += 1;
                 } else if let Some(ref reasoning) = chunk.reasoning_content {
                     if !reasoning.is_empty() && seq == 0 {
-                        ws.broadcast_soul(
-                            session_id,
-                            &name,
-                            &WsEvent {
-                                event_type: WsEventType::SoulChunk,
-                                payload: String::new(),
-                                reasoning_content: Some(reasoning.clone()),
-                                soul_name: Some(name.clone()),
-                                seq,
-            },
-                        );
+                        let reasoning_event = WsEvent {
+                            event_type: WsEventType::SoulChunk,
+                            payload: String::new(),
+                            reasoning_content: Some(reasoning.clone()),
+                            soul_name: Some(name.clone()),
+                            seq,
+                        };
+                        ws.broadcast_soul(session_id, &name, &reasoning_event);
+                        let _ = system_tx.try_send(reasoning_event).ok();
                         seq += 1;
-            }
+                    }
                 }
                 if chunk.finish_reason.as_deref() == Some("length") {
                     truncated = true;
@@ -958,17 +959,15 @@ async fn stream_single_soul_with_detection_with_provider(
         }
     }
 
-    ws.broadcast_soul(
-        session_id,
-        &name,
-        &WsEvent {
-            event_type: WsEventType::SoulDone,
-            payload: String::new(),
-            reasoning_content: None,
-            soul_name: Some(name.clone()),
-            seq,
-        },
-    );
+    let done_event = WsEvent {
+        event_type: WsEventType::SoulDone,
+        payload: String::new(),
+        reasoning_content: None,
+        soul_name: Some(name.clone()),
+        seq,
+    };
+    ws.broadcast_soul(session_id, &name, &done_event);
+    let _ = system_tx.try_send(done_event).ok();
 
     if truncated {
         content.push_str("\n\n> ⚠️ [系统提示] 输出因长度限制被截断。如需完整分析，可尝试简化任务或分拆问题。");
