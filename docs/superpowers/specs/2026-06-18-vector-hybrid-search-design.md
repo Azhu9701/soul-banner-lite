@@ -624,7 +624,7 @@ pub enum FoundationError {
 | `rust/archive/src/lib.rs` | 加 `search_knowledge_hybrid` / `index_knowledge_card` 转发 |
 | `rust/possession/src/modes/conference.rs` | `insert_knowledge_card` 后调 `index_knowledge_card`(FTS+embed) |
 | `config/default.yaml` | 加 `vector_search` 配置块 |
-| `nextjs/components/knowledge-browser.tsx` | 读 `source` 字段区分 message/card 显示(可选,后端先兼容) |
+| `nextjs/components/knowledge-browser.tsx` | 读 `source` 字段区分 message/card 显示（可选,后端先兼容，前端已迁移至 TanStack Start） |
 
 ---
 
