@@ -39,7 +39,7 @@ done
 # Start Frontend (set API URL for mobile access)
 echo "[2/2] 启动前端 (http://localhost:3000)..."
 cd "$DIR/nextjs"
-NEXT_PUBLIC_API_URL="http://${LAN_IP:-127.0.0.1}:3096/api/v1" pnpm dev 2>&1 | sed 's/^/[WEB] /' &
+VITE_API_URL="http://${LAN_IP:-127.0.0.1}:3096/api/v1" pnpm dev 2>&1 | sed 's/^/[WEB] /' &
 FRONT_PID=$!
 sleep 3
 

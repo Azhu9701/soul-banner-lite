@@ -53,17 +53,17 @@ services:
     networks:
       - banner
 
-  # ── Next.js 前端 ────────────────────────────────────
+  # ── TanStack Start 前端 ────────────────────────────────────
   web:
     build:
       context: .
       dockerfile: Dockerfile.web
       args:
-        - NEXT_PUBLIC_API_URL=https://api.${DOMAIN}/api/v1
+        - VITE_API_URL=https://api.${DOMAIN}/api/v1
     restart: unless-stopped
     environment:
       - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=https://api.${DOMAIN}/api/v1
+      - VITE_API_URL=https://api.${DOMAIN}/api/v1
     networks:
       - banner
 
