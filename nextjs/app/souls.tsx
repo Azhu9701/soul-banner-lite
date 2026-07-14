@@ -1,21 +1,23 @@
-"use client";
+import { createFileRoute, Link } from '@tanstack/react-router'
+import { useEffect, useState } from "react"
+import { fetchSouls, type SoulListEntry } from "@/lib/api"
+import { SoulCardGrid } from "@/components/soul-card-grid"
+import { SoulFilterBar } from "@/components/soul-filter-bar"
+import { Skeleton } from "@/components/ui/skeleton"
+import { Button } from "@/components/ui/button"
+import { Search, Wand2 } from "lucide-react"
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { fetchSouls, type SoulListEntry } from "@/lib/api";
-import { SoulCardGrid } from "@/components/soul-card-grid";
-import { SoulFilterBar } from "@/components/soul-filter-bar";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
-import { Search, Wand2 } from "lucide-react";
+export const Route = createFileRoute('/souls')({
+  component: SoulListPage,
+})
 
-export default function SoulListPage() {
-  const [souls, setSouls] = useState<SoulListEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+function SoulListPage() {
+  const [souls, setSouls] = useState<SoulListEntry[]>([])
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchSouls().then(setSouls).finally(() => setLoading(false));
-  }, []);
+    fetchSouls().then(setSouls).finally(() => setLoading(false))
+  }, [])
 
   return (
     <div className="space-y-6">
@@ -25,12 +27,12 @@ export default function SoulListPage() {
           <p className="text-sm text-muted-foreground mt-1">角色列表</p>
         </div>
         <div className="flex gap-2">
-          <Link href="/souls/collect">
+          <Link to="/souls/collect">
             <Button variant="outline" size="sm" data-testid="collect-soul-btn">
               <Search className="h-4 w-4 mr-1" />添加角色
             </Button>
           </Link>
-          <Link href="/souls/refine">
+          <Link to="/souls/refine">
             <Button variant="outline" size="sm" data-testid="refine-soul-btn">
               <Wand2 className="h-4 w-4 mr-1" />编辑角色
             </Button>

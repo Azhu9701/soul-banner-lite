@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearch } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { SessionRunner } from "@/components/session-runner";
@@ -59,11 +59,11 @@ function classifyLogType(line: string): "key" | "soul" | "review" | "other" {
 }
 
 export function PossessionEntry() {
-  const searchParams = useSearchParams();
+  const search = useSearch({ strict: false }) as Record<string, string>;
   const { enabledModes } = useDomain();
   const modes = filteredModes(enabledModes);
-  const initialTaskFromUrl = searchParams?.get("task") || "";
-  const initialSoulsFromUrl = (searchParams?.get("souls") || "")
+  const initialTaskFromUrl = search?.task || "";
+  const initialSoulsFromUrl = (search?.souls || "")
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean);

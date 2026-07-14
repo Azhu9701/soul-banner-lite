@@ -1,8 +1,11 @@
-"use client";
+import { createFileRoute } from '@tanstack/react-router'
+import { KnowledgeBrowser } from "@/components/knowledge-browser"
 
-import { KnowledgeBrowser } from "@/components/knowledge-browser";
+export const Route = createFileRoute('/knowledge')({
+  component: KnowledgePage,
+})
 
-export default function KnowledgePage() {
+function KnowledgePage() {
   return (
     <div className="flex flex-col gap-6 p-6 max-w-4xl mx-auto">
       <div>

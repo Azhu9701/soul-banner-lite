@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "@tanstack/react-router";
 import {
   searchKnowledge,
   rebuildFts,
@@ -26,7 +26,7 @@ const MODE_LABELS: Record<string, string> = {
 };
 
 export function KnowledgeBrowser() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const [tab, setTab] = useState<TabKey>("topics");
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
@@ -262,10 +262,10 @@ export function KnowledgeBrowser() {
                   key={t.session_id}
                   role="button"
                   tabIndex={0}
-                  onClick={() => router.push(`/sessions/${t.session_id}`)}
+                  onClick={() => navigate({ to: `/sessions/${t.session_id}` })}
                   onKeyDown={(e) => {
                     if (e.key === "Enter")
-                      router.push(`/sessions/${t.session_id}`);
+                      navigate({ to: `/sessions/${t.session_id}` });
                   }}
                   className="rounded-lg border bg-background p-4 transition-colors hover:border-primary/20 cursor-pointer"
                 >
@@ -314,13 +314,13 @@ export function KnowledgeBrowser() {
                   key={c.id}
                   role="button"
                   tabIndex={0}
-                  onClick={() =>
-                    c.source_session &&
-                    router.push(`/sessions/${c.source_session}`)
-                  }
+                    onClick={() =>
+                      c.source_session &&
+                      navigate({ to: `/sessions/${c.source_session}` })
+                    }
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && c.source_session)
-                      router.push(`/sessions/${c.source_session}`);
+                      navigate({ to: `/sessions/${c.source_session}` });
                   }}
                   className="rounded-lg border bg-background p-4 transition-colors hover:border-primary/20 cursor-pointer"
                 >
@@ -363,10 +363,10 @@ export function KnowledgeBrowser() {
                   key={i}
                   role="button"
                   tabIndex={0}
-                  onClick={() => router.push(`/sessions/${r.session_id}`)}
+                  onClick={() => navigate({ to: `/sessions/${r.session_id}` })}
                   onKeyDown={(e) => {
                     if (e.key === "Enter")
-                      router.push(`/sessions/${r.session_id}`);
+                      navigate({ to: `/sessions/${r.session_id}` });
                   }}
                   className="rounded-lg border bg-background p-4 transition-colors hover:border-primary/20 cursor-pointer"
                 >

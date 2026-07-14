@@ -1,6 +1,6 @@
-export const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
+export const API_BASE = import.meta.env.VITE_API_URL || "/api/v1";
 
-const API_TOKEN = process.env.NEXT_PUBLIC_API_TOKEN || "";
+const API_TOKEN = import.meta.env.VITE_API_TOKEN || "";
 
 interface ApiError extends Error {
   status?: number;
@@ -207,7 +207,6 @@ export interface KnowledgeCardItem {
 
 export async function fetchSouls(): Promise<SoulListEntry[]> {
   return apiRequest<SoulListEntry[]>('/souls', {
-    next: { revalidate: 60 },
     operation: 'fetchSouls',
   });
 }
@@ -215,7 +214,7 @@ export async function fetchSouls(): Promise<SoulListEntry[]> {
 export async function fetchSoul(name: string): Promise<SoulProfile> {
   return apiRequest<SoulProfile>(
     `/souls/${encodeURIComponent(name)}`,
-    { next: { revalidate: 60 }, operation: 'fetchSoul' }
+    { operation: 'fetchSoul' }
   );
 }
 
@@ -353,14 +352,12 @@ export interface BoundaryReview {
 
 export async function fetchSummonStats(): Promise<SummonStatsResponse> {
   return apiRequest<SummonStatsResponse>('/analytics/summon-stats', {
-    next: { revalidate: 60 },
     operation: 'fetchSummonStats',
   });
 }
 
 export async function fetchModeDistribution(): Promise<Record<string, number>> {
   return apiRequest<Record<string, number>>('/analytics/mode-distribution', {
-    next: { revalidate: 60 },
     operation: 'fetchModeDistribution',
   });
 }
@@ -368,14 +365,14 @@ export async function fetchModeDistribution(): Promise<Record<string, number>> {
 export async function fetchUnsummonedAlerts(days = 30): Promise<SoulAlert[]> {
   return apiRequest<SoulAlert[]>(
     `/analytics/unsummoned?threshold_days=${days}`,
-    { next: { revalidate: 60 }, operation: 'fetchUnsummonedAlerts' }
+    { operation: 'fetchUnsummonedAlerts' }
   );
 }
 
 export async function fetchLowEffectiveness(threshold = 0.3): Promise<BoundaryReview[]> {
   return apiRequest<BoundaryReview[]>(
     `/analytics/low-effectiveness?threshold=${threshold}`,
-    { next: { revalidate: 60 }, operation: 'fetchLowEffectiveness' }
+    { operation: 'fetchLowEffectiveness' }
   );
 }
 
@@ -425,8 +422,8 @@ export async function fetchSessions(
   return apiRequest<SessionSummary[]>(
     `/sessions?limit=${limit}&offset=${offset}`,
     noCache
-      ? { cache: 'no-store', operation: 'fetchSessions' }
-      : { next: { revalidate: 60 }, operation: 'fetchSessions' }
+      ? { cache: 'no-cache', operation: 'fetchSessions' }
+      : { operation: 'fetchSessions' }
   );
 }
 
@@ -437,8 +434,8 @@ export async function fetchSessionDetail(
   return apiRequest<SessionDetail>(
     `/sessions/${id}`,
     noCache
-      ? { cache: 'no-store', operation: 'fetchSessionDetail' }
-      : { next: { revalidate: 60 }, operation: 'fetchSessionDetail' }
+      ? { cache: 'no-cache', operation: 'fetchSessionDetail' }
+      : { operation: 'fetchSessionDetail' }
   );
 }
 
@@ -774,7 +771,7 @@ export interface DomainInfo {
 
 export async function getDomainInfo(): Promise<DomainInfo> {
   return apiRequest<DomainInfo>('/config/domain', {
-    cache: 'no-store',
+    cache: 'no-cache',
     operation: 'getDomainInfo',
   });
 }
@@ -936,7 +933,7 @@ export interface Annotation {
 
 export async function fetchSessionAnnotations(id: string): Promise<Annotation[]> {
   return apiRequest<Annotation[]>(`/sessions/${id}/annotations`, {
-    cache: 'no-store',
+    cache: 'no-cache',
     operation: 'fetchSessionAnnotations',
   });
 }

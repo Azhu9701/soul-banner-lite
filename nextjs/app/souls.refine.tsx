@@ -1,49 +1,50 @@
-"use client";
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { useState, useEffect } from "react"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
+import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
+import { ArrowLeft, Loader2, Sparkles, Check, Save, Wand2 } from "lucide-react"
+import { API_BASE } from "@/lib/api"
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Loader2, Sparkles, Check, Save, Wand2 } from "lucide-react";
-import { API_BASE } from "@/lib/api";
+export const Route = createFileRoute('/souls/refine')({
+  component: RefinePage,
+})
 
-export default function RefinePage() {
-  const router = useRouter();
-  const [material, setMaterial] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [refined, setRefined] = useState<any>(null);
-  const [saving, setSaving] = useState(false);
+function RefinePage() {
+  const navigate = useNavigate()
+  const [material, setMaterial] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [refined, setRefined] = useState<any>(null)
+  const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    const stored = sessionStorage.getItem("refine-material");
-    if (stored) setMaterial(stored);
-  }, []);
+    const stored = sessionStorage.getItem("refine-material")
+    if (stored) setMaterial(stored)
+  }, [])
 
   const onRefine = async () => {
-    if (!material.trim()) return;
-    setLoading(true);
+    if (!material.trim()) return
+    setLoading(true)
     try {
       const r = await fetch(`${API_BASE}/souls/refine`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ raw_material: material }),
-      });
-      const data = await r.json();
-      setRefined(data);
-      sessionStorage.removeItem("refine-material");
+      })
+      const data = await r.json()
+      setRefined(data)
+      sessionStorage.removeItem("refine-material")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   if (!refined) {
     return (
       <div className="max-w-3xl mx-auto space-y-6">
         <div className="flex items-center gap-3">
-          <Link href="/souls"><Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button></Link>
+          <Link to="/souls"><Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button></Link>
           <div>
             <h1 className="text-2xl font-bold">炼化</h1>
             <p className="text-sm text-muted-foreground">Raw 素材 → 结构化 Soul Profile → 自动入幡</p>
@@ -52,7 +53,7 @@ export default function RefinePage() {
         {!material && (
           <div className="rounded-lg bg-muted p-4 text-sm space-y-1">
             <p><strong>如何获取 Raw 素材？</strong></p>
-            <p>1. 从 <Link href="/souls/collect" className="text-primary underline">收集角色</Link> 页面自动收集</p>
+            <p>1. 从 <Link to="/souls/collect" className="text-primary underline">收集角色</Link> 页面自动收集</p>
             <p>2. 手动粘贴以下格式的素材（生平/思想/方法论/代表作/影响）</p>
           </div>
         )}
@@ -65,15 +66,15 @@ export default function RefinePage() {
           {loading ? "炼化中..." : "开始炼化"}
         </Button>
       </div>
-    );
+    )
   }
 
-  const { profile, rationale } = refined;
+  const { profile, rationale } = refined
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
-        <Link href="/souls"><Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button></Link>
+        <Link to="/souls"><Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button></Link>
         <div>
           <h1 className="text-2xl font-bold">炼化完成</h1>
           <p className="text-sm text-muted-foreground">{profile.name} — 已自动写入 registry</p>
@@ -128,7 +129,7 @@ export default function RefinePage() {
 
       <div className="flex gap-2">
         <Button variant="outline" onClick={() => setRefined(null)}>重新炼化</Button>
-        <Link href={`/souls/${encodeURIComponent(profile.name)}`} className="flex-1">
+        <Link to={`/souls/${encodeURIComponent(profile.name)}` as any} className="flex-1">
           <Button className="w-full" data-testid="view-soul-btn">
             <Check className="h-4 w-4 mr-1" /> 查看角色详情
           </Button>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Send, Loader2, AlertCircle, CheckCircle2, StopCircle, ChevronDown, ChevronUp, Paperclip, X, FileText, ImageIcon, Globe } from "lucide-react";
@@ -55,7 +55,7 @@ export default function FollowUpInput({
   /** Souls already in session — shown first in @mention suggestions */
   sessionSouls?: string[];
 }) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const [followUp, setFollowUp] = useState(() => {
     if (typeof window === "undefined") return "";
     return localStorage.getItem(`followup-draft-${sessionId}`) || "";
@@ -314,7 +314,7 @@ export default function FollowUpInput({
     };
 
     setupWsHandlers(ws);
-  }, [sessionId, scheduleFlush, flushImmediate, cleanup, router]);
+  }, [sessionId, scheduleFlush, flushImmediate, cleanup]);
 
   // WS event handlers — shared by manual and trigger sends.
   // Must be a regular function (not useCallback) — hoisted so _send can call it.
@@ -340,7 +340,7 @@ export default function FollowUpInput({
           reasoningContentRef.current = "";
           setSending(false);
           cleanup();
-          router.refresh();
+          // refresh handled by React state
         } else if (msg.event_type === "error") {
           setError(msg.payload);
           flushImmediate();

@@ -1,49 +1,50 @@
-"use client";
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { ArrowLeft, Search, Loader2, Sparkles, Wand2 } from "lucide-react"
+import { API_BASE } from "@/lib/api"
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Search, Loader2, Sparkles, Wand2 } from "lucide-react";
-import { API_BASE } from "@/lib/api";
+export const Route = createFileRoute('/souls/collect')({
+  component: CollectPage,
+})
 
-export default function CollectPage() {
-  const router = useRouter();
-  const [name, setName] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [rawMaterial, setRawMaterial] = useState("");
-  const [collected, setCollected] = useState(false);
-  const [supplement, setSupplement] = useState("");
+function CollectPage() {
+  const navigate = useNavigate()
+  const [name, setName] = useState("")
+  const [loading, setLoading] = useState(false)
+  const [rawMaterial, setRawMaterial] = useState("")
+  const [collected, setCollected] = useState(false)
+  const [supplement, setSupplement] = useState("")
 
   const onCollect = async () => {
-    if (!name.trim()) return;
-    setLoading(true);
+    if (!name.trim()) return
+    setLoading(true)
     try {
       const r = await fetch(`${API_BASE}/souls/collect`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name }),
-      });
-      const data = await r.json();
-      setRawMaterial(data.raw_material);
-      setCollected(true);
+      })
+      const data = await r.json()
+      setRawMaterial(data.raw_material)
+      setCollected(true)
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const onRefine = () => {
-    const material = supplement ? `${rawMaterial}\n\n## 用户供奉\n${supplement}` : rawMaterial;
-    sessionStorage.setItem("refine-material", material);
-    router.push("/souls/refine");
-  };
+    const material = supplement ? `${rawMaterial}\n\n## 用户供奉\n${supplement}` : rawMaterial
+    sessionStorage.setItem("refine-material", material)
+    navigate({ to: "/souls/refine" })
+  }
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       <div className="flex items-center gap-3">
-        <Link href="/souls"><Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button></Link>
+        <Link to="/souls"><Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button></Link>
         <div>
           <h1 className="text-2xl font-bold">收集角色</h1>
           <p className="text-sm text-muted-foreground">AI 辅助收集人物 raw 素材</p>
@@ -62,8 +63,8 @@ export default function CollectPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.nativeEvent.isComposing || e.keyCode === 229) return;
-                  if (e.key === "Enter") onCollect();
+                  if (e.nativeEvent.isComposing || e.keyCode === 229) return
+                  if (e.key === "Enter") onCollect()
                 }}
                 className="flex-1"
                 data-testid="collect-name-input"
@@ -100,7 +101,7 @@ export default function CollectPage() {
           </div>
 
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => { setCollected(false); setRawMaterial(""); }}>重新收集</Button>
+            <Button variant="outline" onClick={() => { setCollected(false); setRawMaterial("") }}>重新收集</Button>
             <Button onClick={onRefine} className="flex-1" data-testid="go-refine-btn">
               <Sparkles className="h-4 w-4 mr-1" /> 送交炼化
             </Button>

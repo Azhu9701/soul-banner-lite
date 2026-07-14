@@ -1,28 +1,30 @@
-"use client";
+import { createFileRoute, notFound } from '@tanstack/react-router'
+import { useEffect, useState } from "react"
+import { fetchSoul, type SoulProfile } from "@/lib/api"
+import { SoulPrompt } from "@/components/soul-prompt"
+import { PracticeObservations } from "@/components/practice-observations"
+import { SummonButton } from "@/components/summon-button"
+import { SoulModelConfig } from "@/components/soul-model-config"
+import { DeleteSoulButton } from "@/components/delete-soul-button"
+import { Calendar } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
 
-import { useEffect, useState } from "react";
-import { useParams, notFound } from "next/navigation";
-import { fetchSoul, type SoulProfile } from "@/lib/api";
-import { SoulPrompt } from "@/components/soul-prompt";
-import { PracticeObservations } from "@/components/practice-observations";
-import { SummonButton } from "@/components/summon-button";
-import { SoulModelConfig } from "@/components/soul-model-config";
-import { DeleteSoulButton } from "@/components/delete-soul-button";
-import { Calendar } from "lucide-react";
-import { Skeleton } from "@/components/ui/skeleton";
+export const Route = createFileRoute('/souls/$name')({
+  component: SoulDetailPage,
+})
 
-export default function SoulDetailPage() {
-  const params = useParams<{ name: string }>();
-  const decodedName = decodeURIComponent(params.name);
-  const [profile, setProfile] = useState<SoulProfile | null>(null);
-  const [error, setError] = useState(false);
+function SoulDetailPage() {
+  const { name } = Route.useParams()
+  const decodedName = decodeURIComponent(name)
+  const [profile, setProfile] = useState<SoulProfile | null>(null)
+  const [error, setError] = useState(false)
 
   useEffect(() => {
-    fetchSoul(decodedName).then(setProfile).catch(() => setError(true));
-  }, [decodedName]);
+    fetchSoul(decodedName).then(setProfile).catch(() => setError(true))
+  }, [decodedName])
 
-  if (error) return notFound();
-  if (!profile) return <Skeleton className="h-96" />;
+  if (error) throw notFound()
+  if (!profile) return <Skeleton className="h-96" />
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">

@@ -1,8 +1,5 @@
-"use client";
-
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useParams, useSearchParams, notFound } from "next/navigation";
-import Link from "next/link";
+import { createFileRoute, Link, notFound } from '@tanstack/react-router'
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
   fetchSessionDetail,
   fetchSessionDigest,
@@ -13,8 +10,8 @@ import {
   type Annotation,
   type SessionDetail,
   type SessionDigest,
-} from "@/lib/api";
-import { SESSIONS_UPDATED_EVENT } from "@/components/sidebar-sessions";
+} from "@/lib/api"
+import { SESSIONS_UPDATED_EVENT } from "@/components/sidebar-sessions"
 import {
   ArrowLeft,
   User,
@@ -22,154 +19,132 @@ import {
   ChevronUp,
   Trash2,
   RefreshCw,
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
-import SessionActions from "@/components/session-actions";
-import FollowUpInput from "@/components/follow-up-input";
-import { SoulRecommendationCard } from "@/components/soul-recommendation-card";
-import { SoulResponseCard } from "@/components/soul-response-card";
-import { SynthesisSection } from "@/components/synthesis-section";
-import { BreadcrumbSetter } from "@/components/breadcrumb-setter";
-import { MessageForkButton } from "@/components/message-fork-button";
+} from "lucide-react"
+import { Button } from "@/components/ui/button"
+import SessionActions from "@/components/session-actions"
+import FollowUpInput from "@/components/follow-up-input"
+import { SoulRecommendationCard } from "@/components/soul-recommendation-card"
+import { SoulResponseCard } from "@/components/soul-response-card"
+import { SynthesisSection } from "@/components/synthesis-section"
+import { BreadcrumbSetter } from "@/components/breadcrumb-setter"
+import { MessageForkButton } from "@/components/message-fork-button"
 
-import { MODE_LABELS_LONG, MODE_COLORS_TEXT, type PossessionMode } from "@/config/possession-modes";
-import { Skeleton } from "@/components/ui/skeleton";
+import { MODE_LABELS_LONG, MODE_COLORS_TEXT, type PossessionMode } from "@/config/possession-modes"
+import { Skeleton } from "@/components/ui/skeleton"
 
-export default function SessionDetailPage() {
-  const params = useParams<{ id: string }>();
-  const id = params.id;
-  const searchParams = useSearchParams();
-  const isFork = searchParams?.get("fork") === "true";
-  const mountedRef = useRef(true);
-  useEffect(() => { return () => { mountedRef.current = false; }; }, []);
+export const Route = createFileRoute('/sessions/$id')({
+  component: SessionDetailPage,
+})
 
-  // Layer 1: lightweight digest (5-10 observations, ~5-10KB)
-  const [digest, setDigest] = useState<SessionDigest | null>(null);
-  const [digestError, setDigestError] = useState(false);
+function SessionDetailPage() {
+  const { id } = Route.useParams()
+  const search = Route.useSearch() as { fork?: string }
+  const isFork = search?.fork === "true"
+  const mountedRef = useRef(true)
+  useEffect(() => { return () => { mountedRef.current = false } }, [])
 
-  // Marginalia annotations (cross-soul critique)
-  const [annotations, setAnnotations] = useState<Annotation[]>([]);
+  const [digest, setDigest] = useState<SessionDigest | null>(null)
+  const [digestError, setDigestError] = useState(false)
+  const [annotations, setAnnotations] = useState<Annotation[]>([])
+  const [detail, setDetail] = useState<SessionDetail | null>(null)
+  const [expanded, setExpanded] = useState<boolean | null>(null)
+  const [scrollToSeq, setScrollToSeq] = useState<number | null>(null)
+  const [distilling, setDistilling] = useState(false)
+  const [followUpTrigger, setFollowUpTrigger] = useState<{ question: string; soul?: string } | null>(null)
 
-  // Layer 2: full conversation (loaded on user demand)
-  const [detail, setDetail] = useState<SessionDetail | null>(null);
-  const [expanded, setExpanded] = useState<boolean | null>(null);
-
-  // Pending scroll-to-seq triggered by observation card click
-  const [scrollToSeq, setScrollToSeq] = useState<number | null>(null);
-
-  const [distilling, setDistilling] = useState(false);
-
-  // Trigger follow-up from soul recommendation card (question + named soul)
-  const [followUpTrigger, setFollowUpTrigger] = useState<{ question: string; soul?: string } | null>(null);
-
-  // Extract soul names from loaded detail for @mention suggestions
   const sessionSoulNames = useMemo(() => {
-    if (!detail) return [];
-    const names = new Set<string>();
+    if (!detail) return []
+    const names = new Set<string>()
     for (const m of detail.messages) {
-      if (m.soul_name && m.role !== "system") names.add(m.soul_name);
+      if (m.soul_name && m.role !== "system") names.add(m.soul_name)
     }
-    return [...names];
-  }, [detail]);
+    return [...names]
+  }, [detail])
 
-  // Track whether auto-distill has been attempted for this session
-  const autoDistilledRef = useRef(false);
+  const autoDistilledRef = useRef(false)
 
-  // 并行拉取所有数据（digest + detail + annotations），不串行等待
   useEffect(() => {
-    fetchSessionDigest(id).then((d) => { if (mountedRef.current) setDigest(d); }).catch(() => { if (mountedRef.current) setDigestError(true); });
-    fetchSessionDetail(id, true).then((d) => { if (mountedRef.current) setDetail(d); }).catch(() => {});
-    fetchSessionAnnotations(id).then((a) => { if (mountedRef.current) setAnnotations(a); }).catch(() => {});
-  }, [id]);
+    fetchSessionDigest(id).then((d) => { if (mountedRef.current) setDigest(d) }).catch(() => { if (mountedRef.current) setDigestError(true) })
+    fetchSessionDetail(id, true).then((d) => { if (mountedRef.current) setDetail(d) }).catch(() => {})
+    fetchSessionAnnotations(id).then((a) => { if (mountedRef.current) setAnnotations(a) }).catch(() => {})
+  }, [id])
 
-  // Auto-distill: only trigger if session has NEVER been distilled (digest_at === null)
-  // 之前检查 observations.length === 0 会导致 distill 失败后每次打开都重新触发
   useEffect(() => {
-    if (!digest || autoDistilledRef.current) return;
+    if (!digest || autoDistilledRef.current) return
     if ((digest.status === 'completed' || digest.status === 'active') && digest.digest_at === null) {
-      autoDistilledRef.current = true;
-      setDistilling(true);
+      autoDistilledRef.current = true
+      setDistilling(true)
       triggerDistill(id).finally(() => {
         setTimeout(() => {
-          if (!mountedRef.current) return;
-          fetchSessionDigest(id).then((d) => { if (mountedRef.current) setDigest(d); }).catch(() => {});
-          if (mountedRef.current) setDistilling(false);
-        }, 3000);
-      });
+          if (!mountedRef.current) return
+          fetchSessionDigest(id).then((d) => { if (mountedRef.current) setDigest(d) }).catch(() => {})
+          if (mountedRef.current) setDistilling(false)
+        }, 3000)
+      })
     }
-  }, [digest, id]);
+  }, [digest, id])
 
-  // Refresh digest + annotations when SESSIONS_UPDATED_EVENT fires
-  // (dispatched by WS observations_ready or annotations_ready)
   useEffect(() => {
     const handle = () => {
-      if (!mountedRef.current) return;
-      fetchSessionDigest(id).then((d) => { if (mountedRef.current) setDigest(d); }).catch(() => {});
-      fetchSessionAnnotations(id).then((a) => { if (mountedRef.current) setAnnotations(a); }).catch(() => {});
-    };
-    window.addEventListener(SESSIONS_UPDATED_EVENT, handle);
-    return () => window.removeEventListener(SESSIONS_UPDATED_EVENT, handle);
-  }, [id]);
+      if (!mountedRef.current) return
+      fetchSessionDigest(id).then((d) => { if (mountedRef.current) setDigest(d) }).catch(() => {})
+      fetchSessionAnnotations(id).then((a) => { if (mountedRef.current) setAnnotations(a) }).catch(() => {})
+    }
+    window.addEventListener(SESSIONS_UPDATED_EVENT, handle)
+    return () => window.removeEventListener(SESSIONS_UPDATED_EVENT, handle)
+  }, [id])
 
-  // After digest loads, decide initial expanded state:
-  // - no observations (未压缩): expand by default so the user sees their conversation
-  // - has observations: collapse, surface digest cards
   useEffect(() => {
     if (digest && expanded === null) {
-      setExpanded(digest.observations.length === 0);
+      setExpanded(digest.observations.length === 0)
     }
-  }, [digest, expanded]);
+  }, [digest, expanded])
 
-  // After detail loads, scroll to pending anchor if requested
   useEffect(() => {
     if (detail && scrollToSeq !== null) {
-      // Defer one frame so the DOM has the anchor element rendered
       requestAnimationFrame(() => {
-        const el = document.getElementById(`msg-${scrollToSeq}`);
+        const el = document.getElementById(`msg-${scrollToSeq}`)
         if (el) {
-          el.scrollIntoView({ behavior: "smooth", block: "center" });
-          el.classList.add("ring-2", "ring-orange-400/60", "transition-shadow");
-          setTimeout(() => el.classList.remove("ring-2", "ring-orange-400/60"), 1800);
+          el.scrollIntoView({ behavior: "smooth", block: "center" })
+          el.classList.add("ring-2", "ring-orange-400/60", "transition-shadow")
+          setTimeout(() => el.classList.remove("ring-2", "ring-orange-400/60"), 1800)
         }
-        setScrollToSeq(null);
-      });
+        setScrollToSeq(null)
+      })
     }
-  }, [detail, scrollToSeq]);
+  }, [detail, scrollToSeq])
 
   const handleJumpToMessage = (seq: number | null) => {
-    if (seq === null) return;
-    if (!expanded) setExpanded(true);
-    setScrollToSeq(seq);
-  };
+    if (seq === null) return
+    if (!expanded) setExpanded(true)
+    setScrollToSeq(seq)
+  }
 
   const handleDistill = async () => {
-    setDistilling(true);
+    setDistilling(true)
     try {
-      await triggerDistill(id);
-      // distill is async; poll digest a few times
+      await triggerDistill(id)
       setTimeout(() => {
-        if (!mountedRef.current) return;
-        fetchSessionDigest(id).then((d) => { if (mountedRef.current) setDigest(d); }).catch(() => {});
-        if (mountedRef.current) setDistilling(false);
-      }, 3000);
+        if (!mountedRef.current) return
+        fetchSessionDigest(id).then((d) => { if (mountedRef.current) setDigest(d) }).catch(() => {})
+        if (mountedRef.current) setDistilling(false)
+      }, 3000)
     } catch {
-      if (mountedRef.current) setDistilling(false);
+      if (mountedRef.current) setDistilling(false)
     }
-  };
+  }
 
-  if (digestError) return notFound();
-  if (!digest) return <Skeleton className="h-96" />;
+  if (digestError) throw notFound()
+  if (!digest) return <Skeleton className="h-96" />
 
-  const hasObservations = digest.observations.length > 0;
-  const modeTextColor = MODE_COLORS_TEXT[digest.mode as PossessionMode] || "text-gray-400";
+  const hasObservations = digest.observations.length > 0
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       <BreadcrumbSetter label={digest.title} />
 
-      {/* Header */}
       <div className="flex items-center gap-3">
-        <Link href="/sessions">
+        <Link to="/sessions">
           <Button variant="ghost" size="icon" className="h-8 w-8">
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -188,11 +163,11 @@ export default function SessionDetailPage() {
           disabled={distilling}
           title={hasObservations ? "重新压缩为 observation" : "压缩为 observation"}
         >
+          <RefreshCw className={`h-4 w-4 ${distilling ? "animate-spin" : ""}`} />
         </Button>
         <SessionActions sessionId={id} title={digest.title} />
       </div>
 
-      {/* Layer 1: digest section (only when observations exist) */}
       {hasObservations && (
         <div className="rounded-xl border bg-gradient-to-br from-orange-50/40 to-amber-50/20 dark:from-orange-950/15 dark:to-amber-950/5 p-5 space-y-4">
           <div className="flex items-center justify-between flex-wrap gap-2">
@@ -207,13 +182,13 @@ export default function SessionDetailPage() {
 
           {digest.summary && (
             <div className="text-sm text-muted-foreground italic border-l-2 border-orange-300/60 dark:border-orange-700/60 pl-3">
-              “{digest.summary}”
+              "{digest.summary}"
             </div>
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {digest.observations.map((o) => {
-              const jumpable = o.source_seq !== null;
+              const jumpable = o.source_seq !== null
               return (
                 <button
                   key={o.id}
@@ -239,13 +214,12 @@ export default function SessionDetailPage() {
                     {o.content}
                   </p>
                 </button>
-              );
+              )
             })}
           </div>
         </div>
       )}
 
-      {/* Marginalia: cross-soul annotations (post-conference annotation pass) */}
       {annotations.length > 0 && (
         <div className="rounded-xl border bg-gradient-to-br from-purple-50/40 to-indigo-50/20 dark:from-purple-950/15 dark:to-indigo-950/5 p-5 space-y-4">
           <h3 className="text-sm font-semibold flex items-center gap-2">
@@ -263,7 +237,7 @@ export default function SessionDetailPage() {
                   </span>
                 </div>
                 <blockquote className="text-xs text-muted-foreground italic border-l-2 border-purple-300/40 pl-2 line-clamp-3">
-                  “{a.target_excerpt}”
+                  "{a.target_excerpt}"
                 </blockquote>
                 <p className="text-sm leading-relaxed whitespace-pre-wrap">{a.comment}</p>
               </div>
@@ -272,7 +246,6 @@ export default function SessionDetailPage() {
         </div>
       )}
 
-      {/* Layer 2 toggle */}
       <div className="flex justify-center">
         <Button
           variant="ghost"
@@ -289,7 +262,6 @@ export default function SessionDetailPage() {
         </Button>
       </div>
 
-      {/* Layer 2: full conversation, lazily loaded */}
       {expanded && (detail ? <FullConversation detail={detail} sessionId={id} onReload={() => fetchSessionDetail(id, true).then(setDetail)} onSummonSoul={(name, subtask) => setFollowUpTrigger({ question: subtask || "", soul: name })} onRefresh={(question) => setFollowUpTrigger({ question })} /> : <Skeleton className="h-96" />)}
 
       {isFork && (
@@ -303,7 +275,6 @@ export default function SessionDetailPage() {
         </div>
       )}
       <FollowUpInput sessionId={id} trigger={followUpTrigger} sessionSouls={sessionSoulNames} />
-
     </div>
   );
 }
@@ -324,12 +295,10 @@ function FullConversation({
   const { messages } = detail;
   const [deleting, setDeleting] = useState<number | null>(null);
   const [refreshing, setRefreshing] = useState<number | null>(null);
-  // 追问记录分页：初始只渲染前 5 条，避免大量 ReactMarkdown 一次性解析
   const [followUpLimit, setFollowUpLimit] = useState(5);
 
   const handleDelete = async (seq: number) => {
     setDeleting(seq);
-    // 只删除该消息的回复，保留消息本身和更早的内容
     await deleteMessagesFromSeq(sessionId, seq + 1);
     setDeleting(null);
     onReload?.();
@@ -339,9 +308,9 @@ function FullConversation({
     setRefreshing(seq);
     await deleteMessagesFromSeq(sessionId, seq + 1);
     setRefreshing(null);
-    // 直接触发追问，不重载页面（追问的回复会通过 WebSocket 流式返回）
     onRefresh?.(content);
   };
+
   const {
     sorted, userMsgs, soulMsgs, synthMsgs, sysMsgs,
     soulResponses, initUserMsgs, initSynths, followPairs,
@@ -382,7 +351,6 @@ function FullConversation({
 
   const recommendedSouls = useMemo(() => {
     if (initSynths.length === 0) return [];
-    // 只从第一轮综合提取推荐角色，追问回复可能包含 **加粗** 文本被误匹配
     return extractRecommendedSouls(initSynths[0].content);
   }, [initSynths]);
 
@@ -466,7 +434,6 @@ function FullConversation({
         </div>
       ))}
 
-      {/* 综合官推荐补充角色 — 紧贴裁决说理下方 */}
       {recommendedSouls.length > 0 && (
         <SoulRecommendationCard recommendations={recommendedSouls} onSummonSoul={onSummonSoul} sessionSouls={sessionSoulNames} />
       )}

@@ -3,7 +3,7 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/Rust-1.75%2B-orange?logo=rust)](https://www.rust-lang.org)
-[![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)](https://nextjs.org)
+[![TanStack Start](https://img.shields.io/badge/TanStack_Start-1.x-FF4154)](https://tanstack.com/start)
 [![Docker](https://img.shields.io/badge/Docker-ready-blue?logo=docker)](https://www.docker.com)
 
 **AI 模拟仲裁庭**——围绕劳动争议等法律场景，同时传唤多个具有独立法律立场的 AI 角色（仲裁法官、原告律师、被告律师、专家证人、劳动者之声），围绕同一案件展开并行庭审、质证交锋与裁决说理。
@@ -43,7 +43,7 @@ Agent 会自动处理：
 - 检查 Docker 环境
 - 生成 `.env` 配置文件
 - 处理代理/网络问题（如 Clash/Surge 的 DNS 劫持）
-- 构建 Rust 后端和 Next.js 前端镜像
+- 构建 Rust 后端和前端镜像
 - 启动所有服务
 
 > 💡 这比自己手动排查 `docker build` 日志、修复 DNS 配置、处理 `npm install` 超时快得多。Agent 直接操作你的本地终端，所见即所得。
@@ -72,7 +72,7 @@ bash start-local.sh
 # 4. 访问 http://localhost:8088
 ```
 
-启动后包含 4 个服务：Caddy（反向代理 + 端口 8088）、API（Rust 后端）、Web（Next.js 前端）、SearXNG（联网搜索）。
+启动后包含 4 个服务：Caddy（反向代理 + 端口 8088）、API（Rust 后端）、Web（TanStack Start 前端）、SearXNG（联网搜索）。
 
 > 🤖 **推荐使用 AI Agent 辅助安装**：如果你遇到构建失败、网络问题或配置困惑，可以直接让 AI Agent（如 Claude、Kimi 等）访问你的项目目录，它会自动诊断并修复 Docker 构建、DNS 配置、依赖安装等常见问题。这比自己手动排查日志更高效。
 
@@ -228,9 +228,9 @@ AGENT_PROXY_KEY=sk-your-proxy-key
 - petgraph 图数据库（法律关系图谱）
 - Tokio 异步运行时
 
-**前端：Next.js 16**
-- shadcn/ui + Tailwind CSS
-- React 19 + TypeScript
+**前端：TanStack Start 1.x**
+- shadcn/ui + Tailwind CSS v4
+- React 19 + TypeScript + Vite
 - WebSocket 实时流式通信
 - Bing / SearXNG 联网搜索 + 网页抓取（Jina Reader + web2llm fallback）
 
@@ -284,7 +284,7 @@ registry_path: "./data/registry.yaml"
 call_records_path: "./data/call-records.yaml"
 server_host: "127.0.0.1"
 server_port: 3096
-nextjs_port: 3000
+web_port: 3000
 
 searxng_url: "http://127.0.0.1:8080"
 search_engine: "bing"
@@ -316,7 +316,7 @@ cors_origins:
 │   ├── registry/      # 角色注册表 + 全文检索 + 冷启动 boost
 │   ├── archive/       # 归档 + 成本追踪 + Token 统计
 │   └── foundation/    # 基础设施（SQLite/存储/错误处理）
-├── nextjs/            # Next.js 前端
+├── nextjs/            # TanStack Start 前端
 ├── config/            # 配置文件
 │   ├── default.yaml   # 默认配置
 │   └── domain.yaml    # 模拟仲裁庭术语定义（角色、庭审流程、裁决风格）

@@ -1,9 +1,9 @@
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 
 export function QuickActions() {
   return (
-    <Link href="/possess" data-testid="new-possession-btn">
+    <Link to="/possess" data-testid="new-possession-btn">
       <Button size="sm">
         <svg width="20" height="20" viewBox="0 0 28 28" fill="none" className="h-4 w-4">
           <ellipse cx="14" cy="17" rx="10" ry="3.5" stroke="currentColor" strokeWidth="1.2" fill="currentColor" fillOpacity="0.05" />

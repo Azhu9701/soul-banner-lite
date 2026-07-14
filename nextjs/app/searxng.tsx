@@ -1,8 +1,11 @@
-"use client";
+import { createFileRoute } from '@tanstack/react-router'
+import { SearxngSearch } from "@/components/searxng-search"
 
-import { SearxngSearch } from "@/components/searxng-search";
+export const Route = createFileRoute('/searxng')({
+  component: SearxngPage,
+})
 
-export default function SearxngPage() {
+function SearxngPage() {
   return (
     <div className="flex flex-col gap-6 p-6 max-w-3xl mx-auto">
       <div>

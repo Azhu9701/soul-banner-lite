@@ -1,10 +1,10 @@
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import { SidebarTitle } from "@/components/sidebar-title";
 
 export function SidebarLogo() {
   return (
     <Link
-      href="/"
+      to="/"
       className="flex h-14 items-center gap-2 border-b px-4 shrink-0"
       data-testid="sidebar-logo"
     >

@@ -1,15 +1,14 @@
-"use client";
-
-import { useEffect, useState, useCallback, useRef } from "react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { createFileRoute } from '@tanstack/react-router'
+import { useEffect, useState, useCallback, useRef } from "react"
+import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
+} from "@/components/ui/select"
 import {
   Eye,
   EyeOff,
@@ -20,10 +19,10 @@ import {
   Wifi,
   WifiOff,
   Server,
-} from "lucide-react";
-import { DEEPSEEK_MODELS_NO_DEFAULT, REASONING_OPTIONS } from "@/config/models";
+} from "lucide-react"
+import { DEEPSEEK_MODELS_NO_DEFAULT, REASONING_OPTIONS } from "@/config/models"
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
+const API_BASE = import.meta.env.VITE_API_URL || "/api/v1"
 
 interface ProviderStatus {
   id: string;
@@ -57,36 +56,14 @@ const PROVIDER_META: Record<
   },
 };
 
-// Claude endpoint 兼容预设——点击后自动填充 URL/Model
 const CLAUDE_PRESETS = [
-  {
-    id: "anthropic",
-    label: "Anthropic 官方",
-    url: "https://api.anthropic.com",
-    model: "claude-sonnet-4-6",
-  },
-  {
-    id: "kimi",
-    label: "Kimi Code",
-    url: "https://api.kimi.com/coding/v1",
-    model: "claude-sonnet-4-6",
-  },
+  { id: "anthropic", label: "Anthropic 官方", url: "https://api.anthropic.com", model: "claude-sonnet-4-6" },
+  { id: "kimi", label: "Kimi Code", url: "https://api.kimi.com/coding/v1", model: "claude-sonnet-4-6" },
 ] as const;
 
-// OpenAI endpoint 兼容预设——点击后自动填充 URL/Model
 const OPENAI_PRESETS = [
-  {
-    id: "openai",
-    label: "OpenAI 官方",
-    url: "https://api.openai.com/v1",
-    model: "gpt-4o",
-  },
-  {
-    id: "kimi",
-    label: "Kimi Code (OpenAI 兼容)",
-    url: "https://api.kimi.com/coding/v1",
-    model: "kimi-for-coding",
-  },
+  { id: "openai", label: "OpenAI 官方", url: "https://api.openai.com/v1", model: "gpt-4o" },
+  { id: "kimi", label: "Kimi Code (OpenAI 兼容)", url: "https://api.kimi.com/coding/v1", model: "kimi-for-coding" },
 ] as const;
 
 const STATIC_PROVIDERS: ProviderStatus[] = [
@@ -96,30 +73,30 @@ const STATIC_PROVIDERS: ProviderStatus[] = [
   { id: "lmstudio", name: "LM Studio", model: "local-model", available: true, has_key: true, tier: "Pro", active: false },
 ];
 
-export default function ModelsPage() {
+export const Route = createFileRoute('/models')({
+  component: ModelsPage,
+})
+
+function ModelsPage() {
   const [providers, setProviders] = useState<ProviderStatus[]>(STATIC_PROVIDERS);
   const [selected, setSelected] = useState<string>("deepseek");
   const [testing, setTesting] = useState<string | null>(null);
-  const [testResults, setTestResults] = useState<Record<string, TestResult>>(
-    {}
-  );
+  const [testResults, setTestResults] = useState<Record<string, TestResult>>({});
   const [switching, setSwitching] = useState<string | null>(null);
 
-  // API Key form state
   const [keys, setKeys] = useState<Record<string, string>>({});
   const [keyVisible, setKeyVisible] = useState<Record<string, boolean>>({});
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [editingKey, setEditingKey] = useState<Record<string, boolean>>({});
 
-  // LM Studio model
   const [lmstudioModel, setLmstudioModel] = useState("");
   const [lmstudioModelDraft, setLmstudioModelDraft] = useState("");
   const [savingLmstudioModel, setSavingLmstudioModel] = useState(false);
   const [lmstudioModelSaved, setLmstudioModelSaved] = useState(false);
   const modelDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // LM Studio config
   const [lmstudioUrl, setLmstudioUrl] = useState("http://localhost:1234/v1");
+  const [lmstudioUrlDraft, setLmstudioUrlDraft] = useState("http://localhost:1234/v1");
   const [lmstudioKey, setLmstudioKey] = useState("");
   const [lmstudioKeyDraft, setLmstudioKeyDraft] = useState("");
   const [savingLmstudioUrl, setSavingLmstudioUrl] = useState(false);
@@ -127,7 +104,6 @@ export default function ModelsPage() {
   const [lmstudioSaved, setLmstudioSaved] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Default model config
   const [defaultModel, setDefaultModel] = useState("deepseek-v4-pro");
   const [defaultReasoning, setDefaultReasoning] = useState("think");
   const [savingDefaults, setSavingDefaults] = useState(false);
@@ -146,7 +122,6 @@ export default function ModelsPage() {
     } catch {}
   }, []);
 
-  // ── 中转站 (Agent Proxy) ──
   const [relayUrl, setRelayUrl] = useState("");
   const [relayUrlDraft, setRelayUrlDraft] = useState("");
   const [relayKey, setRelayKey] = useState("");
@@ -160,7 +135,6 @@ export default function ModelsPage() {
   } | null>(null);
   const relayDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // OpenAI config
   const [openaiUrl, setOpenaiUrl] = useState("https://api.openai.com/v1");
   const [openaiUrlDraft, setOpenaiUrlDraft] = useState("https://api.openai.com/v1");
   const [openaiKey, setOpenaiKey] = useState("");
@@ -182,7 +156,6 @@ export default function ModelsPage() {
     ok: boolean; message?: string; latency_ms?: number; models?: string[];
   } | null>(null);
 
-  // Claude config
   const [claudeUrl, setClaudeUrl] = useState("https://api.anthropic.com/v1");
   const [claudeUrlDraft, setClaudeUrlDraft] = useState("https://api.anthropic.com/v1");
   const [claudeKey, setClaudeKey] = useState("");
@@ -355,20 +328,15 @@ export default function ModelsPage() {
     } catch {}
   }, []);
 
-  const [lmstudioUrlDraft, setLmstudioUrlDraft] = useState("http://localhost:1234/v1");
-  const [lmstudioUrlSaved, setLmstudioUrlSaved] = useState(false);
-  const urlDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  // Cleanup all debounce timers on unmount
   useEffect(() => {
     return () => {
       [
         modelDebounceRef, debounceRef, relayDebounceRef, urlDebounceRef,
-        openaiUrlDebounceRef, openaiKeyDebounceRef, openaiModelDebounceRef,
-        claudeUrlDebounceRef, claudeKeyDebounceRef, claudeModelDebounceRef,
       ].forEach((ref) => { if (ref.current) clearTimeout(ref.current); });
     };
   }, []);
+
+  const urlDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const saveLmstudioUrl = useCallback(async (url: string) => {
     if (urlDebounceRef.current) clearTimeout(urlDebounceRef.current);
@@ -382,8 +350,8 @@ export default function ModelsPage() {
         });
         if (res.ok) {
           setLmstudioUrl(url);
-          setLmstudioUrlSaved(true);
-          setTimeout(() => setLmstudioUrlSaved(false), 2000);
+          setLmstudioSaved(true);
+          setTimeout(() => setLmstudioSaved(false), 2000);
           fetchProviders();
         }
       } catch {}
@@ -417,7 +385,6 @@ export default function ModelsPage() {
       const res = await fetch(`${API_BASE}/config/providers`);
       if (res.ok) {
         const data: ProviderStatus[] = await res.json();
-        // Merge API status into static list, preserving order
         setProviders((prev) =>
           prev.map((p) => {
             const remote = data.find((d) => d.id === p.id);
@@ -450,7 +417,6 @@ export default function ModelsPage() {
     fetchRelayConfig();
     fetchOpenaiConfig();
     fetchClaudeConfig();
-    // Load keys from localStorage
     const stored: Record<string, string> = {};
     ["deepseek", "claude", "openai", "lmstudio"].forEach((p) => {
       stored[p] = localStorage.getItem(`apikey_${p}`) || "";
@@ -814,7 +780,6 @@ export default function ModelsPage() {
         </p>
       </div>
 
-      {/* ── Provider 卡片 ── */}
       <div className="grid grid-cols-2 gap-3">
         {providers.map((p) => {
           const isActive = p.active;
@@ -831,13 +796,11 @@ export default function ModelsPage() {
                     : "border-border bg-card hover:bg-muted/50"
               } ${p.id === "lmstudio" ? "col-span-2" : ""}`}
             >
-              {/* Active badge */}
               {isActive && (
                 <span className="absolute top-2 right-2 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground">
                   活跃
                 </span>
               )}
-
               <div className="flex items-center gap-2 mb-1">
                 <span
                   className={`inline-block h-2 w-2 rounded-full shrink-0 ${
@@ -854,7 +817,6 @@ export default function ModelsPage() {
               {!p.available && p.id !== "lmstudio" && (
                 <p className="text-[10px] text-red-400 mt-1">无 API Key</p>
               )}
-
               {testResult && (
                 <div
                   className={`mt-2 text-[10px] flex items-center gap-1 ${testResult.ok ? "text-emerald-600" : "text-red-500"}`}
@@ -874,7 +836,6 @@ export default function ModelsPage() {
         })}
       </div>
 
-      {/* ── 选中 Provider 详情 ── */}
       {selected && selectedProvider && meta && (
         <div className="rounded-lg border bg-card p-4 space-y-4">
           <div className="flex items-center justify-between">
@@ -915,13 +876,10 @@ export default function ModelsPage() {
 
           <hr className="border-border" />
 
-          {/* Provider config */}
           {meta.lmstudio ? (
             <>
               <div>
-                <label className="text-xs font-medium block mb-1.5">
-                  模型名
-                </label>
+                <label className="text-xs font-medium block mb-1.5">模型名</label>
                 <div className="flex gap-2 items-center">
                   <Input
                     type="text"
@@ -938,9 +896,7 @@ export default function ModelsPage() {
                     <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />
                   )}
                   {lmstudioModelSaved && !savingLmstudioModel && (
-                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 shrink-0">
-                      已保存
-                    </span>
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 shrink-0">已保存</span>
                   )}
                 </div>
                 <p className="text-[10px] text-muted-foreground mt-1">
@@ -948,9 +904,7 @@ export default function ModelsPage() {
                 </p>
               </div>
               <div>
-                <label className="text-xs font-medium block mb-1.5">
-                  API Key
-                </label>
+                <label className="text-xs font-medium block mb-1.5">API Key</label>
                 <div className="flex gap-2 items-center">
                   <Input
                     type="password"
@@ -967,9 +921,7 @@ export default function ModelsPage() {
                     <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />
                   )}
                   {lmstudioSaved && !savingLmstudioKey && (
-                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 shrink-0">
-                      已保存
-                    </span>
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 shrink-0">已保存</span>
                   )}
                 </div>
                 <p className="text-[10px] text-muted-foreground mt-1">
@@ -977,9 +929,7 @@ export default function ModelsPage() {
                 </p>
               </div>
               <div>
-                <label className="text-xs font-medium block mb-1.5">
-                  端点地址
-                </label>
+                <label className="text-xs font-medium block mb-1.5">端点地址</label>
                 <div className="flex gap-2 items-center">
                   <Input
                     type="text"
@@ -995,10 +945,8 @@ export default function ModelsPage() {
                   {savingLmstudioUrl && (
                     <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />
                   )}
-                  {lmstudioUrlSaved && !savingLmstudioUrl && (
-                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 shrink-0">
-                      已保存
-                    </span>
+                  {lmstudioSaved && !savingLmstudioUrl && (
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 shrink-0">已保存</span>
                   )}
                 </div>
                 <p className="text-[10px] text-muted-foreground mt-1">
@@ -1006,253 +954,13 @@ export default function ModelsPage() {
                 </p>
               </div>
             </>
-          ) : meta.endpointConfig ? (
-            <div className="space-y-4">
-              <div>
-                <label className="text-xs font-medium block mb-1.5">
-                  Base URL
-                </label>
+          ) : null}
 
-                {/* endpoint 兼容预设：OpenAI / Claude 各自的快捷配置 */}
-                {selected === "openai" && (
-                  <div className="flex flex-wrap gap-1.5 mb-2">
-                    {OPENAI_PRESETS.map((preset) => (
-                      <button
-                        key={preset.id}
-                        type="button"
-                        onClick={() => {
-                          setOpenaiUrlDraft(preset.url);
-                          setOpenaiModelDraft(preset.model);
-                          saveOpenaiUrl(preset.url);
-                          saveOpenaiModel(preset.model);
-                        }}
-                        className={`text-[10px] px-2 py-1 rounded-md border transition-colors ${
-                          openaiUrlDraft === preset.url
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border text-muted-foreground hover:bg-muted/50"
-                        }`}
-                      >
-                        {preset.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {selected === "claude" && (
-                  <div className="flex flex-wrap gap-1.5 mb-2">
-                    {CLAUDE_PRESETS.map((preset) => (
-                      <button
-                        key={preset.id}
-                        type="button"
-                        onClick={() => {
-                          setClaudeUrlDraft(preset.url);
-                          setClaudeModelDraft(preset.model);
-                          saveClaudeUrl(preset.url);
-                          saveClaudeModel(preset.model);
-                        }}
-                        className={`text-[10px] px-2 py-1 rounded-md border transition-colors ${
-                          claudeUrlDraft === preset.url
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border text-muted-foreground hover:bg-muted/50"
-                        }`}
-                      >
-                        {preset.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                <div className="flex gap-2 items-center">
-                  <Input
-                    type="text"
-                    placeholder={selected === "openai" ? "https://api.openai.com/v1" : "https://api.anthropic.com/v1"}
-                    value={selected === "openai" ? openaiUrlDraft : claudeUrlDraft}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (selected === "openai") {
-                        setOpenaiUrlDraft(val);
-                        saveOpenaiUrl(val);
-                      } else {
-                        setClaudeUrlDraft(val);
-                        saveClaudeUrl(val);
-                      }
-                    }}
-                    className="text-sm"
-                  />
-                  {(selected === "openai" ? savingOpenaiUrl : savingClaudeUrl) && (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />
-                  )}
-                  {(selected === "openai" ? openaiUrlSaved && !savingOpenaiUrl : claudeUrlSaved && !savingClaudeUrl) && (
-                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 shrink-0">
-                      已保存
-                    </span>
-                  )}
-                </div>
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  支持官方地址或 OpenAI-compatible / Anthropic-compatible 中转地址
-                </p>
-              </div>
+          <hr className="border-border" />
 
-              <div>
-                <label className="text-xs font-medium block mb-1.5">
-                  API Key
-                </label>
-                <div className="flex gap-2 items-center">
-                  <Input
-                    type="password"
-                    placeholder={selected === "openai" ? "sk-..." : "sk-ant-..."}
-                    value={selected === "openai" ? openaiKeyDraft : claudeKeyDraft}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (selected === "openai") {
-                        setOpenaiKeyDraft(val);
-                        saveOpenaiKey(val);
-                      } else {
-                        setClaudeKeyDraft(val);
-                        saveClaudeKey(val);
-                      }
-                    }}
-                    className="text-sm"
-                  />
-                  {(selected === "openai" ? savingOpenaiKey : savingClaudeKey) && (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />
-                  )}
-                  {(selected === "openai" ? openaiKeySaved && !savingOpenaiKey : claudeKeySaved && !savingClaudeKey) && (
-                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 shrink-0">
-                      已保存
-                    </span>
-                  )}
-                </div>
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  或设置环境变量 {meta.envKey}
-                </p>
-              </div>
-
-              <div>
-                <label className="text-xs font-medium block mb-1.5">
-                  模型
-                </label>
-                {selected === "openai" && openaiFetchedModels.length > 0 ? (
-                  <div className="space-y-2">
-                    <Select
-                      value={openaiModelDraft || undefined}
-                      onValueChange={(v) => {
-                        if (!v) return;
-                        setOpenaiModelDraft(v);
-                        saveOpenaiModel(v);
-                      }}
-                    >
-                      <SelectTrigger className="w-full">
-                        <SelectValue placeholder="选择 OpenAI 模型" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {openaiFetchedModels.map((m) => (
-                          <SelectItem key={m} value={m}>
-                            {m}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {openaiModel && (
-                      <p className="text-[10px] text-muted-foreground">
-                        当前激活：{openaiModel}
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex gap-2 items-center">
-                    <Input
-                      type="text"
-                      placeholder={selected === "openai" ? "gpt-4o" : "claude-sonnet-4-6"}
-                      value={selected === "openai" ? openaiModelDraft : claudeModelDraft}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (selected === "openai") {
-                          setOpenaiModelDraft(val);
-                          saveOpenaiModel(val);
-                        } else {
-                          setClaudeModelDraft(val);
-                          saveClaudeModel(val);
-                        }
-                      }}
-                      className="text-sm"
-                    />
-                    {(selected === "openai" ? savingOpenaiModel : savingClaudeModel) && (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />
-                    )}
-                    {(selected === "openai" ? openaiModelSaved && !savingOpenaiModel : claudeModelSaved && !savingClaudeModel) && (
-                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 shrink-0">
-                        已保存
-                      </span>
-                    )}
-                  </div>
-                )}
-                {selected === "openai" && (
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    点击测试后会自动拉取该 Base URL 下的模型列表
-                  </p>
-                )}
-                {selected === "claude" && (
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    Anthropic 官方无标准 /models 列表，模型名需手动填写
-                  </p>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={selected === "openai" ? testOpenaiEndpoint : testClaudeEndpoint}
-                  disabled={selected === "openai" ? testingOpenaiEndpoint : testingClaudeEndpoint}
-                >
-                  {(selected === "openai" ? testingOpenaiEndpoint : testingClaudeEndpoint) ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
-                  ) : (
-                    <Wifi className="h-3.5 w-3.5 mr-1" />
-                  )}
-                  测试连通
-                </Button>
-              </div>
-
-              {(selected === "openai" ? openaiEndpointTestResult : claudeEndpointTestResult) && (
-                <div
-                  className={`text-xs rounded-md p-3 space-y-1 ${
-                    (selected === "openai" ? openaiEndpointTestResult?.ok : claudeEndpointTestResult?.ok)
-                      ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                      : "bg-destructive/10 text-destructive"
-                  }`}
-                >
-                  <div className="font-medium">
-                    {(selected === "openai" ? openaiEndpointTestResult?.ok : claudeEndpointTestResult?.ok) ? "连接成功" : "连接失败"}
-                    {(selected === "openai" ? openaiEndpointTestResult?.latency_ms : claudeEndpointTestResult?.latency_ms) != null && (
-                      <span className="ml-2 font-normal opacity-70">
-                        {selected === "openai" ? openaiEndpointTestResult?.latency_ms : claudeEndpointTestResult?.latency_ms}ms
-                      </span>
-                    )}
-                  </div>
-                  {(selected === "openai" ? openaiEndpointTestResult?.message : claudeEndpointTestResult?.message) && (
-                    <div>
-                      {selected === "openai" ? openaiEndpointTestResult?.message : claudeEndpointTestResult?.message}
-                    </div>
-                  )}
-                  {selected === "openai" && Array.isArray(openaiEndpointTestResult?.models) && openaiEndpointTestResult.models.length > 0 && (
-                    <div>
-                      拉取到 {openaiEndpointTestResult.models.length} 个模型
-                      <span className="opacity-70">
-                        {" "}（{openaiEndpointTestResult.models.slice(0, 8).join("、")}
-                        {openaiEndpointTestResult.models.length > 8 ? "…" : ""}）
-                      </span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          ) : (
+          {!meta.lmstudio && (
             <div>
-              <label className="text-xs font-medium block mb-1.5">
-                API Key
-              </label>
-
-              {/* 已配置：显示遮罩状态 */}
+              <label className="text-xs font-medium block mb-1.5">API Key</label>
               {selectedProvider.has_key && !editingKey[selected] ? (
                 <div className="flex items-center gap-2">
                   <div className="flex-1 rounded-md border bg-muted/50 px-3 py-2 text-sm text-muted-foreground">
@@ -1332,216 +1040,8 @@ export default function ModelsPage() {
               </p>
             </div>
           )}
-
-          {/* Test result detail */}
-          {testResults[selected] && (
-            <div
-              className={`text-xs rounded-md p-2 ${
-                testResults[selected].ok
-                  ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                  : "bg-destructive/10 text-destructive"
-              }`}
-            >
-              {testResults[selected].ok
-                ? `连通成功，延迟 ${testResults[selected].latency_ms}ms`
-                : `连通失败：${testResults[selected].message}`}
-              {Array.isArray(testResults[selected].models) && testResults[selected].models!.length > 0 && (
-                <div className="mt-1 opacity-80">
-                  可用模型：{testResults[selected].models!.length} 个
-                  {" "}（{testResults[selected].models!.slice(0, 8).join("、")}
-                  {testResults[selected].models!.length > 8 ? "…" : ""}）
-                </div>
-              )}
-            </div>
-          )}
         </div>
       )}
-
-      {/* ── 中转站 (Agent Proxy) ── */}
-      <div className="rounded-lg border bg-card p-4 space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-sm font-semibold flex items-center gap-2">
-              <Server className="h-4 w-4" />
-              中转站配置
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              统一管理所有 AI 调用——设置 Agent Proxy 地址后，DeepSeek/Claude/OpenAI 全部走中转站
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={testRelay}
-              disabled={testingRelay}
-            >
-              {testingRelay ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
-              ) : (
-                <Wifi className="h-3.5 w-3.5 mr-1" />
-              )}
-              测试连接
-            </Button>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-xs font-medium block mb-1.5">
-              Base URL
-            </label>
-            <div className="flex gap-2 items-center">
-              <Input
-                type="text"
-                placeholder="https://your-relay-server/v1"
-                value={relayUrlDraft}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setRelayUrlDraft(val);
-                  saveRelay(val, relayKeyDraft);
-                }}
-                className="text-sm"
-              />
-              {savingRelay && (
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />
-              )}
-              {relaySaved && !savingRelay && (
-                <span className="text-[10px] text-emerald-600 shrink-0">已保存</span>
-              )}
-            </div>
-            <p className="text-[10px] text-muted-foreground mt-1">
-              对应环境变量 AI_RELAY_URL
-            </p>
-          </div>
-          <div>
-            <label className="text-xs font-medium block mb-1.5">
-              API Key
-            </label>
-            <Input
-              type="password"
-              placeholder="在 Agent Proxy 后台创建"
-              value={relayKeyDraft}
-              onChange={(e) => {
-                const val = e.target.value;
-                setRelayKeyDraft(val);
-                saveRelay(relayUrlDraft, val);
-              }}
-              className="text-sm"
-            />
-            <p className="text-[10px] text-muted-foreground mt-1">
-              对应环境变量 AGENT_PROXY_KEY
-            </p>
-          </div>
-        </div>
-
-        {/* 测试结果 */}
-        {relayTestResult && (
-          <div
-            className={`text-xs rounded-md p-3 space-y-1 ${
-              relayTestResult.ok
-                ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                : "bg-destructive/10 text-destructive"
-            }`}
-          >
-            <div className="font-medium">
-              {relayTestResult.ok ? "连接成功" : "连接失败"}
-              {relayTestResult.latency_ms != null && (
-                <span className="ml-2 font-normal opacity-70">{relayTestResult.latency_ms}ms</span>
-              )}
-            </div>
-            {relayTestResult.models_count != null && (
-              <div>
-                可用模型：{relayTestResult.models_count} 个
-                {relayTestResult.models && relayTestResult.models.length > 0 && (
-                  <span className="opacity-70">
-                    {" "}（{relayTestResult.models.slice(0, 8).join("、")}
-                    {relayTestResult.models.length > 8 ? "…" : ""}）
-                  </span>
-                )}
-              </div>
-            )}
-            {relayTestResult.chat_ok !== undefined && (
-              <div>Chat API：{relayTestResult.chat_ok ? "正常" : "异常"}</div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* ── 默认模型配置 ── */}
-      <div className="rounded-lg border bg-card p-4 space-y-4">
-        <h3 className="text-sm font-semibold">默认模型配置</h3>
-        <p className="text-xs text-muted-foreground">
-          未指定模型时使用的默认值
-        </p>
-
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="text-xs font-medium block mb-1.5">
-              默认模型
-            </label>
-            <Select
-              value={defaultModel}
-              onValueChange={(v) => setDefaultModel(v ?? "")}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="选择模型" />
-              </SelectTrigger>
-              <SelectContent>
-                {DEEPSEEK_MODELS_NO_DEFAULT.map((m) => (
-                  <SelectItem key={m.value} value={m.value}>
-                    {m.label}
-                  </SelectItem>
-                ))}
-                {lmstudioModel && (
-                  <SelectItem key="lmstudio" value={lmstudioModel}>
-                    LM Studio ({lmstudioModel}) - 本地模型
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <label className="text-xs font-medium block mb-1.5">
-              推理强度
-            </label>
-            <Select
-              value={defaultReasoning}
-              onValueChange={(v) => setDefaultReasoning(v ?? "")}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="选择强度" />
-              </SelectTrigger>
-              <SelectContent>
-                {REASONING_OPTIONS.filter((r) => r.value).map((r) => (
-                  <SelectItem key={r.value} value={r.value}>
-                    {r.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-
-        <Button
-          size="sm"
-          variant={savingDefaults ? "default" : "outline"}
-          onClick={saveDefaults}
-          disabled={savingDefaults}
-          className="w-full"
-        >
-          {savingDefaults ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
-          ) : null}
-          保存默认配置
-        </Button>
-        {defaultsSaved && (
-          <p className="text-[10px] text-emerald-600 text-center">已保存到服务端</p>
-        )}
-        {defaultsError && (
-          <p className="text-[10px] text-red-500 text-center">{defaultsError}</p>
-        )}
-      </div>
     </div>
   );
 }

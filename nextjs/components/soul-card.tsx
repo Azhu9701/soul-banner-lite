@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import type { SoulListEntry } from "@/lib/api";
 import { DeleteSoulButton } from "@/components/delete-soul-button";
 import { Users } from "lucide-react";
@@ -6,7 +6,7 @@ import { Users } from "lucide-react";
 export function SoulCard({ soul }: { soul: SoulListEntry }) {
   return (
     <Link
-      href={`/souls/${encodeURIComponent(soul.name)}`}
+      to={`/souls/${encodeURIComponent(soul.name)}` as any}
       data-testid={`soul-card-${soul.name}`}
       className="group relative flex flex-col gap-3 rounded-lg border bg-background p-4 transition-all hover:-translate-y-0.5 hover:shadow-md hover:border-primary/30"
     >

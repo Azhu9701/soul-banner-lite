@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useNavigate } from "@tanstack/react-router";
 import { Loader2, CheckCircle, UserPlus, ArrowRight, Target, ChevronDown, ChevronUp } from "lucide-react";
 import { autoCreateSoul, watchAutoCreate, fetchSouls } from "@/lib/api";
 import type { SoulRecommendation } from "@/hooks/use-websocket";
@@ -125,7 +125,7 @@ export function SoulRecommendationCard({
   onSummonSoul,
   sessionSouls,
 }: SoulRecommendationCardProps) {
-  const router = useRouter();
+  const navigate = useNavigate();
   interface SoulTaskState { loading: boolean; done: boolean; error: string; progress: string; }
   const [taskState, setTaskState] = useState<Record<string, SoulTaskState>>({});
   const [existingSouls, setExistingSouls] = useState<Set<string>>(new Set());
@@ -197,7 +197,7 @@ export function SoulRecommendationCard({
       const params = new URLSearchParams();
       params.set("souls", clean);
       if (subtask) params.set("task", subtask);
-      router.push(`/possess?${params.toString()}`);
+      navigate({ to: `/possess?${params.toString()}` });
     }
   };
 
