@@ -15,7 +15,7 @@ pub struct Config {
     pub call_records_path: PathBuf,
     pub server_host: String,
     pub server_port: u16,
-    pub nextjs_port: u16,
+    pub web_port: u16,
     pub searxng_url: String,
     pub search_engine: String,
     pub api_token: Option<String>,
@@ -51,7 +51,7 @@ impl Config {
             data_dir: PathBuf::from(data_dir),
             server_host: cfg.get_string("server_host").unwrap_or_else(|_| "127.0.0.1".into()),
             server_port: cfg.get_int("server_port").map(|p| p as u16).unwrap_or(3001),
-            nextjs_port: cfg.get_int("nextjs_port").map(|p| p as u16).unwrap_or(3000),
+            web_port: cfg.get_int("web_port").map(|p| p as u16).unwrap_or(3000),
             searxng_url: cfg.get_string("searxng_url").unwrap_or_else(|_| "http://127.0.0.1:8080".into()),
             search_engine: cfg.get_string("search_engine").unwrap_or_else(|_| "bing".into()),
             api_token: cfg.get_string("api_token").ok()

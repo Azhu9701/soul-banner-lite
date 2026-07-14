@@ -108,7 +108,7 @@ build_backend() {
 }
 
 build_frontend() {
-    log_info "构建 Next.js 前端..."
+    log_info "构建前端..."
     cd "$SCRIPT_DIR/nextjs"
     pnpm install
     pnpm build
