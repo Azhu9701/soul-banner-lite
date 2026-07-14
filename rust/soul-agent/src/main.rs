@@ -46,6 +46,10 @@ struct Cli {
     /// 启动 TUI 模式
     #[arg(long)]
     tui: bool,
+
+    /// 非交互模式（纯流式输出，不启动 TUI）
+    #[arg(long)]
+    no_tui: bool,
 }
 
 // ── Main ────────────────────────────────────────────────────────────────
@@ -59,6 +63,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let cli = Cli::parse();
 
+    // ── TUI mode (default when no task or --tui flag) ──
+    let use_tui = cli.tui || (cli.task.is_empty() && !cli.no_tui);
+    if use_tui {
+        let task = if cli.task.is_empty() {
+            String::new() // TUI will show input prompt
+        } else {
+            cli.task.join(" ")
+        };
+        return tui::run(task, cli.souls, cli.mode, cli.data_dir).await;
+    }
+
+    // ── Streaming mode ──
     let task = if cli.task.is_empty() {
         let mut input = String::new();
         io::stdin().read_line(&mut input)?;
@@ -79,27 +95,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         "debate" => Some(PossessionMode::Debate),
         _ => Some(PossessionMode::Conference),
     };
-
-    // ── TUI mode ──
-    if cli.tui {
-        // Resolve souls for TUI (auto-pick if not specified)
-        let config = SoulAgentConfig::from_data_dir(&cli.data_dir);
-        let store = Arc::new(SoulStore::new(config.data_dir.to_str().unwrap())?);
-        let registry = Arc::new(SoulRegistry::new(store.clone()).await?);
-
-        let tui_souls: Vec<String> = if cli.souls.is_empty() {
-            let all = registry.list_souls(&Default::default())?;
-            if all.len() >= 3 {
-                all.iter().take(3).map(|s| s.name.clone()).collect()
-            } else {
-                all.iter().map(|s| s.name.clone()).collect()
-            }
-        } else {
-            cli.souls.clone()
-        };
-
-        return tui::run(task, tui_souls, cli.mode, cli.data_dir).await;
-    }
 
     // ── Streaming mode ──
     // Init SDK
