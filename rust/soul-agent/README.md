@@ -1,37 +1,52 @@
 # Soul Agent
 
-**Multi-agent AI orchestration platform.** SDK + HTTP service.
+**Multi-agent AI orchestration SDK for Rust.**
 
 ```bash
 cargo add soul-agent
 ```
 
-## Quick Start
+## Quick Start (5 lines)
 
 ```rust
 use soul_agent::prelude::*;
+use std::sync::Arc;
+use foundation::SoulAgentConfig;
 
-let engine = PossessionEngine::new(store, registry, gateway, domain);
-let input = PossessionInput {
-    task: "是否应该实行四天工作制？".into(),
-    souls: vec!["经济学家".into(), "HR总监".into(), "工会代表".into()],
-    mode: Some("conference".into()),
-    ..Default::default()
-};
-let (tx, rx) = tokio::sync::mpsc::unbounded_channel();
-let session_id = engine.start_possession(input, tx).await?;
+let config = SoulAgentConfig::from_data_dir("./data");
+let store = Arc::new(/* impl Storage */);
+let registry = Arc::new(SoulRegistry::new(store.clone()).await?);
+let gateway = Arc::new(GatewayRegistry::new());
+let engine = PossessionEngine::new(store, registry, gateway, config.domain);
 ```
 
 ## Architecture
 
 ```
-soul-agent (SDK) ─── wraps ─── possession + ai-gateway
-     │
-     └── prelude: PossessionEngine, PossessionInput, GatewayRegistry, ...
+soul-agent (SDK)
+  ├── PossessionEngine     ← multi-agent conference/debate/single/relay/learn
+  ├── GatewayRegistry      ← multi-provider LLM (OpenAI/Claude/DeepSeek/LM Studio)
+  ├── SoulAgentConfig      ← minimal SDK config (no YAML/env needed)
+  └── prelude              ← convenience re-exports
 ```
 
-## Components
+## Orchestration Modes
 
-- [possession](../possession/README.md) — multi-agent orchestration engine
-- [ai-gateway](../ai-gateway/README.md) — multi-provider LLM gateway
-- [api](../api/) — HTTP API server
+| Mode | When |
+|------|------|
+| `single` | Simple Q&A with one soul |
+| `conference` | Multi-soul parallel + synthesis |
+| `debate` | Two opposing souls |
+| `relay` | Sequential soul chain |
+| `learn` | Teaching/learning mode |
+
+## Examples
+
+```bash
+cargo run -p soul-agent --example single_mode
+cargo run -p soul-agent --example conference_mode
+```
+
+## License
+
+MIT

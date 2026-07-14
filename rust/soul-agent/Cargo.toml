@@ -2,7 +2,10 @@
 name = "soul-agent"
 version = "0.1.0"
 edition = "2021"
-description = "Soul Agent — multi-agent AI orchestration SDK and HTTP service."
+description = "Soul Agent — multi-agent AI orchestration SDK. Conference, debate, single-agent modes with multi-provider LLM support."
+license = "MIT"
+repository = "https://github.com/earendil-works/pi"
+keywords = ["ai", "llm", "multi-agent", "orchestration", "agent"]
 
 [lib]
 name = "soul_agent"
@@ -16,4 +19,4 @@ registry = { path = "../registry" }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["full"] }
-serde_json = { workspace = true }
+tracing-subscriber = { workspace = true }

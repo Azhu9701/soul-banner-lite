@@ -24,6 +24,53 @@ pub struct Config {
     pub domain: DomainProfile,
 }
 
+// ── Soul Agent 独立配置（不依赖 YAML/环境变量） ──
+
+/// SDK 最小配置，仅包含 Soul Agent 运行所需的核心字段。
+/// 供 `soul-agent` crate 及外部项目使用。
+#[derive(Debug, Clone)]
+pub struct SoulAgentConfig {
+    pub data_dir: PathBuf,
+    pub souls_dir: PathBuf,
+    pub souls_internal_dir: Option<PathBuf>,
+    pub archive_dir: PathBuf,
+    pub db_path: PathBuf,
+    pub registry_path: PathBuf,
+    pub call_records_path: PathBuf,
+    pub domain: DomainProfile,
+}
+
+impl SoulAgentConfig {
+    /// 从数据目录创建配置，所有子目录自动推导。
+    pub fn from_data_dir(data_dir: impl Into<PathBuf>) -> Self {
+        let data_dir = data_dir.into();
+        let souls_dir = data_dir.join("souls");
+        let souls_internal_dir = std::env::var("WANMINFAN_SOULS_INTERNAL_DIR")
+            .ok()
+            .map(PathBuf::from)
+            .or_else(|| {
+                let default = data_dir.join("souls-internal");
+                if default.exists() { Some(default) } else { None }
+            });
+        SoulAgentConfig {
+            archive_dir: data_dir.join("archive"),
+            db_path: data_dir.join("soul-agent.db"),
+            registry_path: data_dir.join("registry.yaml"),
+            call_records_path: data_dir.join("call-records.yaml"),
+            souls_dir,
+            souls_internal_dir,
+            data_dir,
+            domain: DomainProfile::default(),
+        }
+    }
+
+    /// 设置领域配置（自定义术语、prompt 模板）。
+    pub fn with_domain(mut self, domain: DomainProfile) -> Self {
+        self.domain = domain;
+        self
+    }
+}
+
 impl Config {
     pub fn load() -> Result<Self> {
         let builder = ConfigBuilder::builder()
