@@ -7,7 +7,7 @@ registry_path: "./data/registry.yaml"
 call_records_path: "./data/call-records.yaml"
 server_host: "127.0.0.1"
 server_port: 3096
-nextjs_port: 3000
+web_port: 3000
 
 searxng_url: "http://127.0.0.1:8080"
 # 搜索引擎: bing (默认，开箱即用) | searxng (需自部署)
