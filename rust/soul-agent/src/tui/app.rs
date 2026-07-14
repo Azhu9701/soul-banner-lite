@@ -1,28 +1,23 @@
 use possession::WsEvent;
-use foundation::SynthesisOutput;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum Tab {
-    Verdict,
     Rounds,
-    Collisions,
-    Souls,
-    Cost,
+    Summary,
+    Info,
 }
 
 impl Tab {
     pub fn label(&self) -> &str {
         match self {
-            Tab::Verdict => "最终裁决",
             Tab::Rounds => "交锋过程",
-            Tab::Collisions => "碰撞图谱",
-            Tab::Souls => "Soul 信息",
-            Tab::Cost => "成本",
+            Tab::Summary => "摘要",
+            Tab::Info => "信息",
         }
     }
 
-    pub fn all() -> [Tab; 5] {
-        [Tab::Verdict, Tab::Rounds, Tab::Collisions, Tab::Souls, Tab::Cost]
+    pub fn all() -> [Tab; 3] {
+        [Tab::Rounds, Tab::Summary, Tab::Info]
     }
 }
 
@@ -33,79 +28,97 @@ pub struct App {
     pub events: Vec<WsEvent>,
     pub active_tab: Tab,
     pub scroll: u16,
-    pub current_round: usize,
-    pub total_rounds: usize,
-    pub collision_count: usize,
-    #[allow(dead_code)]
-    pub total_tokens: u64,
-    /// 追问输入模式
     pub follow_up_input: String,
     pub follow_up_active: bool,
 }
 
 impl App {
     pub fn new(task: String, souls: Vec<String>, mode: String, events: Vec<WsEvent>) -> Self {
-        let (total_rounds, collision_count) = Self::analyze_events(&events);
-
         App {
-            task,
-            souls,
-            mode,
-            events,
-            active_tab: Tab::Verdict,
+            task, souls, mode, events,
+            active_tab: Tab::Rounds,
             scroll: 0,
-            current_round: 1,
-            total_rounds,
-            collision_count,
-            total_tokens: 0,
             follow_up_input: String::new(),
             follow_up_active: false,
         }
     }
 
-    fn analyze_events(events: &[WsEvent]) -> (usize, usize) {
-        let process_steps = events.iter()
-            .filter(|e| matches!(e.event_type, possession::WsEventType::ProcessStep))
-            .count();
-        let rounds = (process_steps / 3).min(1) + 1;
-
-        let collisions = events.iter()
-            .filter(|e| matches!(e.event_type, possession::WsEventType::Collision))
-            .count();
-
-        (rounds, collisions)
-    }
-
-    pub fn synthesis_text(&self) -> String {
-        let mut text = String::new();
+    /// Get each soul's full text, with collision markers embedded inline
+    /// Returns (soul_name, text_with_collision_markers)
+    pub fn round_souls_with_collisions(&self) -> Vec<(String, String)> {
+        // First pass: build a map of (from_soul, to_soul) -> collision content
+        let mut collision_map: std::collections::HashMap<(String, String), String> = std::collections::HashMap::new();
         for e in &self.events {
-            if matches!(e.event_type, possession::WsEventType::SynthesisChunk) {
-                text.push_str(&e.payload);
+            if matches!(e.event_type, possession::WsEventType::Collision) {
+                // Try to parse collision from payload
+                let parts: Vec<&str> = e.payload.splitn(3, ' ').collect();
+                if parts.len() >= 2 {
+                    let from = parts[0].to_string();
+                    let to = parts.get(1).map(|s| s.trim().trim_end_matches(':').to_string()).unwrap_or_default();
+                    let content = parts.get(2).map(|s| s.to_string()).unwrap_or_default();
+                    collision_map.insert((from, to), content);
+                }
             }
         }
-        if text.is_empty() { "等待综合裁决...".into() } else { text }
-    }
 
-    /// Try to parse synthesis output as structured JSON
-    pub fn structured_synthesis(&self) -> Option<SynthesisOutput> {
-        let raw = self.synthesis_text();
-        // Try to find JSON in the text (it might be wrapped in markdown or have extra text)
-        if let Ok(parsed) = serde_json::from_str::<SynthesisOutput>(&raw) {
-            return Some(parsed);
-        }
-        // Try extracting JSON between { and }
-        if let Some(start) = raw.find('{') {
-            if let Some(end) = raw.rfind('}') {
-                let json = &raw[start..=end];
-                serde_json::from_str::<SynthesisOutput>(json).ok()
-            } else {
-                None
+        // Second pass: collect soul texts with collision markers
+        let mut souls: Vec<(String, String)> = Vec::new();
+        let mut current_name = String::new();
+        let mut current_text = String::new();
+
+        for e in &self.events {
+            match e.event_type {
+                possession::WsEventType::SoulStarted => {
+                    if !current_name.is_empty() && !current_text.is_empty() {
+                        // Inject collisions targeting this soul
+                        let with_collisions = Self::inject_collisions(&current_name, &current_text, &collision_map);
+                        souls.push((std::mem::take(&mut current_name), with_collisions));
+                        current_text.clear();
+                    }
+                    current_name = e.soul_name.clone().unwrap_or_default();
+                }
+                possession::WsEventType::SoulChunk => {
+                    current_text.push_str(&e.payload);
+                }
+                possession::WsEventType::SoulDone => {
+                    if !current_text.is_empty() {
+                        let with_collisions = Self::inject_collisions(&current_name, &current_text, &collision_map);
+                        souls.push((std::mem::take(&mut current_name), with_collisions));
+                        current_text.clear();
+                    }
+                }
+                _ => {}
             }
-        } else {
-            None
         }
+
+        if !current_name.is_empty() && !current_text.is_empty() {
+            let with_collisions = Self::inject_collisions(&current_name, &current_text, &collision_map);
+            souls.push((current_name, with_collisions));
+        }
+
+        souls
     }
 
+    fn inject_collisions(
+        soul_name: &str,
+        text: &str,
+        collision_map: &std::collections::HashMap<(String, String), String>,
+    ) -> String {
+        let mut result = text.to_string();
+        let targets: Vec<String> = collision_map.iter()
+            .filter(|((_, to), _)| to == soul_name)
+            .map(|((from, _), content)| format!("\n  ⚡ {} 说道: {}\n", from, content))
+            .collect();
+        if !targets.is_empty() {
+            result.push_str("\n\n── 收到的交叉质证 ──\n");
+            for t in &targets {
+                result.push_str(t);
+            }
+        }
+        result
+    }
+
+    /// Get raw soul texts without collision injection
     pub fn round_souls(&self) -> Vec<(String, String)> {
         let mut souls: Vec<(String, String)> = Vec::new();
         let mut current_name = String::new();
@@ -119,9 +132,7 @@ impl App {
                     }
                     current_name = e.soul_name.clone().unwrap_or_default();
                 }
-                possession::WsEventType::SoulChunk => {
-                    current_text.push_str(&e.payload);
-                }
+                possession::WsEventType::SoulChunk => { current_text.push_str(&e.payload); }
                 possession::WsEventType::SoulDone => {
                     if !current_text.is_empty() {
                         souls.push((std::mem::take(&mut current_name), std::mem::take(&mut current_text)));
@@ -130,27 +141,23 @@ impl App {
                 _ => {}
             }
         }
-
         if !current_name.is_empty() && !current_text.is_empty() {
             souls.push((current_name, current_text));
         }
-
         souls
     }
 
-    pub fn collisions(&self) -> Vec<String> {
-        self.events.iter()
-            .filter(|e| matches!(e.event_type, possession::WsEventType::Collision))
-            .map(|e| e.payload.clone())
-            .collect()
+    pub fn synthesis_text(&self) -> String {
+        let mut text = String::new();
+        for e in &self.events {
+            if matches!(e.event_type, possession::WsEventType::SynthesisChunk) {
+                text.push_str(&e.payload);
+            }
+        }
+        text
     }
 
-    pub fn cost_info(&self) -> Vec<String> {
-        self.events.iter()
-            .filter(|e| matches!(e.event_type, possession::WsEventType::Cost))
-            .map(|e| e.payload.clone())
-            .collect()
-    }
+    // ── Navigation ──
 
     pub fn next_tab(&mut self) {
         let tabs = Tab::all();
@@ -168,23 +175,11 @@ impl App {
 
     pub fn scroll_up(&mut self) { self.scroll = self.scroll.saturating_sub(1); }
     pub fn scroll_down(&mut self) { self.scroll = self.scroll.saturating_add(1); }
-    pub fn next_round(&mut self) { if self.current_round < self.total_rounds { self.current_round += 1; } }
-    pub fn prev_round(&mut self) { self.current_round = self.current_round.saturating_sub(1).max(1); }
 
-    /// 切换追问输入模式
     pub fn toggle_follow_up(&mut self) {
         self.follow_up_active = !self.follow_up_active;
-        if !self.follow_up_active {
-            self.follow_up_input.clear();
-        }
+        if !self.follow_up_active { self.follow_up_input.clear(); }
     }
-
-    /// 输入字符到追问框
-    pub fn follow_up_push(&mut self, c: char) {
-        self.follow_up_input.push(c);
-    }
-
-    pub fn follow_up_pop(&mut self) {
-        self.follow_up_input.pop();
-    }
+    pub fn follow_up_push(&mut self, c: char) { self.follow_up_input.push(c); }
+    pub fn follow_up_pop(&mut self) { self.follow_up_input.pop(); }
 }

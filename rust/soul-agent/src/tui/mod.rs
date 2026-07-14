@@ -283,8 +283,6 @@ pub async fn run(
                         KeyCode::BackTab => app.prev_tab(),
                         KeyCode::Up => app.scroll_up(),
                         KeyCode::Down => app.scroll_down(),
-                        KeyCode::Left => app.prev_round(),
-                        KeyCode::Right => app.next_round(),
                         _ => {}
                     }
                 }
