@@ -3,7 +3,10 @@
 //! Usage:
 //!   soul "是否应该实行四天工作制？"
 //!   soul "task" --souls 经济学家,HR总监 --mode conference
+//!   soul "task" --tui
 //!   echo "task" | soul
+
+mod tui;
 
 use std::io::{self, Write};
 use std::sync::Arc;
@@ -39,6 +42,10 @@ struct Cli {
     /// 数据目录
     #[arg(long, default_value = "./data")]
     data_dir: String,
+
+    /// 启动 TUI 模式
+    #[arg(long)]
+    tui: bool,
 }
 
 // ── Main ────────────────────────────────────────────────────────────────
@@ -73,6 +80,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         _ => Some(PossessionMode::Conference),
     };
 
+    // ── TUI mode ──
+    if cli.tui {
+        // Resolve souls for TUI (auto-pick if not specified)
+        let config = SoulAgentConfig::from_data_dir(&cli.data_dir);
+        let store = Arc::new(SoulStore::new(config.data_dir.to_str().unwrap())?);
+        let registry = Arc::new(SoulRegistry::new(store.clone()).await?);
+
+        let tui_souls: Vec<String> = if cli.souls.is_empty() {
+            let all = registry.list_souls(&Default::default())?;
+            if all.len() >= 3 {
+                all.iter().take(3).map(|s| s.name.clone()).collect()
+            } else {
+                all.iter().map(|s| s.name.clone()).collect()
+            }
+        } else {
+            cli.souls.clone()
+        };
+
+        return tui::run(task, tui_souls, cli.mode, cli.data_dir).await;
+    }
+
+    // ── Streaming mode ──
     // Init SDK
     let config = SoulAgentConfig::from_data_dir(&cli.data_dir);
     let store = Arc::new(SoulStore::new(config.data_dir.to_str().unwrap())?);
